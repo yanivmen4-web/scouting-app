@@ -1,54 +1,60 @@
-  import streamlit as st
-import pandas as pd
 import requests
+import pandas as pd
+import streamlit as st
 
 st.set_page_config(page_title="CMA Scouting Tool", layout="wide")
 
 st.title("CMA Scouting Tool")
 st.write("Live Transfermarkt Squad Search")
 
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-
 st.sidebar.header("Search Settings")
 club_id = st.sidebar.text_input("Transfermarkt Club ID", value="500")
 
-@st.cache_data
+
+@st.cache_data(ttl=3600)
 def fetch_club_players(c_id):
     url = f"https://api.transfermarkt-api.visiting.fans/clubs/{c_id}/players"
-    try:
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code == 200:
-            data = res.json()
-            players = []
-            for p in data.get("players", []):
-                players.append({
-                    "Name": p.get("name"),
-                    "Position": p.get("position"),
-                    "Age": p.get("age"),
-                    "Market Value (€)": p.get("marketValue")
-                })
-            return pd.DataFrame(players)
-    except:
-        pass
-    return pd.DataFrame()
+    headers = {"User-Agent": "Mozilla/5.0"}
+    res = requests.get(url, headers=headers, timeout=20)
+    if res.status_code != 200:
+        raise RuntimeError(f"Server returned status {res.status_code}")
+    rows = []
+    for p in res.json().get("players", []):
+        rows.append({
+            "Name": p.get("name"),
+            "Position": p.get("position"),
+            "Age": p.get("age"),
+            "Market Value (€)": p.get("marketValue"),
+        })
+    return pd.DataFrame(rows)
 
-df = fetch_club_players(club_id)
 
-if not df.empty:
-    st.sidebar.header("Filter Players")
-    
-    if "Age" in df.columns and df["Age"].notna().any():
-        min_age = int(df["Age"].min())
-        max_age = int(df["Age"].max())
+try:
+    df = fetch_club_players(club_id)
+except Exception as e:
+    st.error(f"Could not load data: {e}")
+    st.stop()
+
+if df.empty:
+    st.warning("No players found for this Club ID.")
+    st.stop()
+
+df["Age"] = pd.to_numeric(df["Age"], errors="coerce")
+df["Market Value (€)"] = pd.to_numeric(df["Market Value (€)"], errors="coerce")
+
+st.sidebar.header("Filter Players")
+
+if df["Age"].notna().any():
+    min_age = int(df["Age"].min())
+    max_age = int(df["Age"].max())
+    if min_age < max_age:
         selected_age = st.sidebar.slider("Age Range", min_age, max_age, (min_age, max_age))
-        df = df[(df["Age"] >= selected_age[0]) & (df["Age"] <= selected_age[1])]
-    
-    if "Position" in df.columns and df["Position"].notna().any():
-        positions = df["Position"].dropna().unique().tolist()
-        selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
-        df = df[df["Position"].isin(selected_positions)]
+        df = df[df["Age"].between(selected_age[0], selected_age[1])]
 
-    st.write(f"Showing **{len(df)}** players:")
-    st.dataframe(df, use_container_width=True)
-else:
-    st.warning("No player data found for this Club ID or live connection pending.")
+if df["Position"].notna().any():
+    positions = df["Position"].dropna().unique().tolist()
+    selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
+    df = df[df["Position"].isin(selected_positions)]
+
+st.write(f"Showing **{len(df)}** players:")
+st.dataframe(df, hide_index=True)
