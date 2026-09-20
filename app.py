@@ -137,3 +137,51 @@ df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 st.caption(caption)
 
 df = df[[c for c in ORDER if c in df.columns]]
+
+
+st.sidebar.header("Filter Players")
+
+search_name = st.sidebar.text_input("Search by name")
+if search_name:
+    df = df[df["Name"].str.contains(search_name, case=False, na=False)]
+
+search_club = st.sidebar.text_input("Search by club")
+if search_club:
+    df = df[df["Club Name"].str.contains(search_club, case=False, na=False)]
+
+if df["Age"].notna().any():
+    min_age = int(df["Age"].min())
+    max_age = int(df["Age"].max())
+    if min_age < max_age:
+        selected_age = st.sidebar.slider("Age Range", min_age, max_age, (min_age, max_age))
+        df = df[df["Age"].between(selected_age[0], selected_age[1])]
+
+if "Position" in df.columns and df["Position"].notna().any():
+    positions = df["Position"].dropna().unique().tolist()
+    selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
+    df = df[df["Position"].isin(selected_positions)]
+
+if "Market Value (€)" in df.columns:
+    min_value = st.sidebar.number_input("Min market value (€)", min_value=0, value=0, step=100000)
+    if min_value > 0:
+        df = df[df["Market Value (€)"] >= min_value]
+
+st.write(f"Showing **{len(df)}** players:")
+
+display_df = df.drop(columns=["Club Name"], errors="ignore")
+
+column_config = {}
+if "Transfermarkt" in display_df.columns:
+    column_config["Transfermarkt"] = st.column_config.LinkColumn("Transfermarkt", display_text="Open")
+if "Club" in display_df.columns:
+    column_config["Club"] = st.column_config.LinkColumn("Club", display_text=r"#(.*)$")
+
+try:
+    money_config = dict(column_config)
+    if "Market Value (€)" in display_df.columns:
+        money_config["Market Value (€)"] = st.column_config.NumberColumn(
+            "Market Value (€)", format="localized"
+        )
+    st.dataframe(display_df, hide_index=True, width="stretch", column_config=money_config)
+except Exception:
+    st.dataframe(display_df, hide_index=True, width="stretch", column_config=column_config)
