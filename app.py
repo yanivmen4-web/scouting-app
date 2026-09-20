@@ -1,4 +1,7 @@
+import io
+
 import pandas as pd
+import requests
 import streamlit as st
 
 st.set_page_config(page_title="CMA Scouting Tool", layout="wide")
@@ -19,13 +22,24 @@ COLUMNS = {
     "agent_name": "Agent",
 }
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept": "*/*",
+}
+
 st.sidebar.header("Data Source")
 data_url = st.sidebar.text_input("Players file URL", value=DEFAULT_URL)
 
 
 @st.cache_data(ttl=86400)
 def load_players(url):
-    raw = pd.read_csv(url)
+    res = requests.get(url, headers=HEADERS, timeout=60)
+    if res.status_code != 200:
+        raise RuntimeError(f"Server returned status {res.status_code}")
+    content = res.content
+    compression = "gzip" if content[:2] == b"\x1f\x8b" else None
+    raw = pd.read_csv(io.BytesIO(content), compression=compression)
     if "last_season" in raw.columns:
         raw = raw[raw["last_season"] == raw["last_season"].max()]
     keep = [c for c in COLUMNS if c in raw.columns]
