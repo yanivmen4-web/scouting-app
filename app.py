@@ -28,8 +28,8 @@ COLUMNS = {
 
 ORDER = [
     "Name", "Transfermarkt", "Age", "Position", "Sub Position", "Club",
-    "Last Transfer", "Club (players file)", "Club (latest transfer)", "Transfer From",
-    "Nationality", "Market Value (€)", "Contract Expires", "Agent", "Club Name",
+    "Last Transfer", "Nationality", "Market Value (€)", "Contract Expires",
+    "Agent", "Club Name",
 ]
 
 HEADERS = {
@@ -94,97 +94,4 @@ def load_latest_transfers(url):
     out = pd.DataFrame({
         "player_id": last["player_id"].astype("Int64"),
         "Latest Club": last["to_club_name"],
-        "Latest Club ID": last["to_club_id"].astype("Int64"),
-        "Latest From": last["from_club_name"],
-        "Last Transfer": last["transfer_date"].dt.strftime("%Y-%m-%d"),
-    })
-    return out.reset_index(drop=True)
-
-
-def club_link(name, club_id):
-    if pd.isna(name):
-        return None
-    if pd.notna(club_id):
-        return f"https://www.transfermarkt.com/-/startseite/verein/{int(club_id)}#{name}"
-    search = "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="
-    return f"{search}{quote(str(name))}#{name}"
-
-
-try:
-    with st.spinner("Loading players file..."):
-        df, file_modified, latest_season = load_players(data_url)
-except Exception as e:
-    st.error(f"Could not load data: {e}")
-    st.stop()
-
-caption = f"File last modified: {file_modified} | Latest season in file: {latest_season}"
-
-df["Club Name"] = df["Club"] if "Club" in df.columns else pd.NA
-df["Club (players file)"] = df["Club Name"]
-
-if "Club" in df.columns and "player_id" in df.columns:
-    try:
-        with st.spinner("Loading transfers file..."):
-            latest = load_latest_transfers(transfers_url)
-        caption += f" | Latest transfer in file: {latest['Last Transfer'].max()}"
-        df = df.merge(latest, on="player_id", how="left")
-        has_latest = df["Latest Club"].notna()
-        df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
-        df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
-        df["Club (latest transfer)"] = df["Latest Club"]
-        df["Transfer From"] = df["Latest From"]
-    except Exception as e:
-        st.warning(f"Could not load transfers file: {e}")
-
-df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
-
-st.caption(caption)
-
-df = df[[c for c in ORDER if c in df.columns]]
-
-st.sidebar.header("Filter Players")
-
-search_name = st.sidebar.text_input("Search by name")
-if search_name:
-    df = df[df["Name"].str.contains(search_name, case=False, na=False)]
-
-search_club = st.sidebar.text_input("Search by club")
-if search_club:
-    df = df[df["Club Name"].str.contains(search_club, case=False, na=False)]
-
-if df["Age"].notna().any():
-    min_age = int(df["Age"].min())
-    max_age = int(df["Age"].max())
-    if min_age < max_age:
-        selected_age = st.sidebar.slider("Age Range", min_age, max_age, (min_age, max_age))
-        df = df[df["Age"].between(selected_age[0], selected_age[1])]
-
-if "Position" in df.columns and df["Position"].notna().any():
-    positions = df["Position"].dropna().unique().tolist()
-    selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
-    df = df[df["Position"].isin(selected_positions)]
-
-if "Market Value (€)" in df.columns:
-    min_value = st.sidebar.number_input("Min market value (€)", min_value=0, value=0, step=100000)
-    if min_value > 0:
-        df = df[df["Market Value (€)"] >= min_value]
-
-st.write(f"Showing **{len(df)}** players:")
-
-display_df = df.drop(columns=["Club Name"], errors="ignore")
-
-column_config = {}
-if "Transfermarkt" in display_df.columns:
-    column_config["Transfermarkt"] = st.column_config.LinkColumn("Transfermarkt", display_text="Open")
-if "Club" in display_df.columns:
-    column_config["Club"] = st.column_config.LinkColumn("Club", display_text=r"#(.*)$")
-
-try:
-    money_config = dict(column_config)
-    if "Market Value (€)" in display_df.columns:
-        money_config["Market Value (€)"] = st.column_config.NumberColumn(
-            "Market Value (€)", format="localized"
-        )
-    st.dataframe(display_df, hide_index=True, width="stretch", column_config=money_config)
-except Exception:
-    st.dataframe(display_df, hide_index=True, width="stretch", column_config=column_config)
+        "Latest Club ID":
