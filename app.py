@@ -83,14 +83,10 @@ def load_players(url):
     return df.reset_index(drop=True), file_modified, str(latest_season)
 
 
-@st.cache_data(ttl=3600)
-def load_latest_transfers(url):
-    tr, _ = download_csv(url)
-    tr["transfer_date"] = pd.to_datetime(tr["transfer_date"], errors="coerce")
-    tr = tr.dropna(subset=["transfer_date"])
-    tr = tr[tr["transfer_date"] <= pd.Timestamp.today()]
-    tr = tr.sort_values("transfer_date")
-    last = tr.groupby("player_id").tail(1)
-    out = pd.DataFrame({
-        "player_id": last["player_id"].astype("Int64"),
-        "Latest Club": last["to_club_name"],
+def club_link(name, club_id):
+    if pd.isna(name):
+        return None
+    if pd.notna(club_id):
+        return f"https://www.transfermarkt.com/-/startseite/verein/{int(club_id)}#{name}"
+    search = "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="
+    return f"{search}{quote(str(name))}#{name}"
