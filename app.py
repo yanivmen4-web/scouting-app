@@ -80,3 +80,83 @@ def load_players(url):
 @st.cache_data(ttl=3600)
 def load_latest_transfers(url):
     tr, _ = download_csv(url)
+    tr["transfer_date"] = pd.to_datetime(tr["transfer_date"], errors="coerce")
+    tr = tr.dropna(subset=["transfer_date"])
+    tr = tr[tr["transfer_date"] <= pd.Timestamp.today()]
+    tr = tr.sort_values("transfer_date")
+    last = tr.groupby("player_id").tail(1)
+    out = pd.DataFrame({
+        "player_id": last["player_id"].astype("Int64"),
+        "Latest Club": last["to_club_name"],
+        "Last Transfer": last["transfer_date"].dt.strftime("%Y-%m-%d"),
+    })
+    return out.reset_index(drop=True)
+
+
+try:
+    with st.spinner("Loading players file..."):
+        df, file_modified, latest_season = load_players(data_url)
+except Exception as e:
+    st.error(f"Could not load data: {e}")
+    st.stop()
+
+caption = f"File last modified: {file_modified} | Latest season in file: {latest_season}"
+
+if "Club" in df.columns and "player_id" in df.columns:
+    try:
+        with st.spinner("Loading transfers file..."):
+            latest = load_latest_transfers(transfers_url)
+        caption += f" | Latest transfer in file: {latest['Last Transfer'].max()}"
+        df = df.merge(latest, on="player_id", how="left")
+        df = df.rename(columns={"Club": "Club (data file)"})
+        df["Club"] = df["Latest Club"].fillna(df["Club (data file)"])
+    except Exception as e:
+        st.warning(f"Could not load transfers file: {e}")
+
+st.caption(caption)
+
+df = df[[c for c in ORDER if c in df.columns]]
+
+st.sidebar.header("Filter Players")
+
+search_name = st.sidebar.text_input("Search by name")
+if search_name:
+    df = df[df["Name"].str.contains(search_name, case=False, na=False)]
+
+if "Club" in df.columns:
+    search_club = st.sidebar.text_input("Search by club")
+    if search_club:
+        df = df[df["Club"].str.contains(search_club, case=False, na=False)]
+
+if df["Age"].notna().any():
+    min_age = int(df["Age"].min())
+    max_age = int(df["Age"].max())
+    if min_age < max_age:
+        selected_age = st.sidebar.slider("Age Range", min_age, max_age, (min_age, max_age))
+        df = df[df["Age"].between(selected_age[0], selected_age[1])]
+
+if "Position" in df.columns and df["Position"].notna().any():
+    positions = df["Position"].dropna().unique().tolist()
+    selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
+    df = df[df["Position"].isin(selected_positions)]
+
+if "Market Value (€)" in df.columns:
+    min_value = st.sidebar.number_input("Min market value (€)", min_value=0, value=0, step=100000)
+    if min_value > 0:
+        df = df[df["Market Value (€)"] >= min_value]
+
+st.write(f"Showing **{len(df)}** players:")
+
+column_config = {}
+if "Transfermarkt" in df.columns:
+    column_config["Transfermarkt"] = st.column_config.LinkColumn("Transfermarkt", display_text="Open")
+
+try:
+    money_config = dict(column_config)
+    if "Market Value (€)" in df.columns:
+        money_config["Market Value (€)"] = st.column_config.NumberColumn(
+            "Market Value (€)", format="localized"
+        )
+    st.dataframe(df, hide_index=True, width="stretch", column_config=money_config)
+except Exception:
+    st.dataframe(df, hide_index=True, width="stretch", column_config=column_config)
