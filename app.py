@@ -1,5 +1,4 @@
 import io
-import re
 
 import pandas as pd
 import requests
@@ -10,7 +9,9 @@ st.set_page_config(page_title="CMA Scouting Tool", layout="wide")
 st.title("CMA Scouting Tool")
 st.write("Player Database (Transfermarkt open dataset)")
 
-DEFAULT_URL = "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/players.csv.gz"
+BASE = "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/"
+DEFAULT_URL = BASE + "players.csv.gz"
+DEFAULT_TRANSFERS_URL = BASE + "transfers.csv.gz"
 
 COLUMNS = {
     "name": "Name",
@@ -23,6 +24,12 @@ COLUMNS = {
     "agent_name": "Agent",
 }
 
+ORDER = [
+    "Name", "Age", "Position", "Sub Position", "Club", "Club (data file)",
+    "Last Transfer", "Nationality", "Market Value (€)", "Contract Expires",
+    "Agent", "Transfermarkt",
+]
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -31,17 +38,22 @@ HEADERS = {
 
 st.sidebar.header("Data Source")
 data_url = st.sidebar.text_input("Players file URL", value=DEFAULT_URL)
+transfers_url = st.sidebar.text_input("Transfers file URL", value=DEFAULT_TRANSFERS_URL)
+
+
+def download_csv(url):
+    res = requests.get(url, headers=HEADERS, timeout=60)
+    if res.status_code != 200:
+        raise RuntimeError(f"Server returned status {res.status_code}")
+    content = res.content
+    compression = "gzip" if content[:2] == b"\x1f\x8b" else None
+    return pd.read_csv(io.BytesIO(content), compression=compression), res.headers
 
 
 @st.cache_data(ttl=3600)
 def load_players(url):
-    res = requests.get(url, headers=HEADERS, timeout=60)
-    if res.status_code != 200:
-        raise RuntimeError(f"Server returned status {res.status_code}")
-    file_modified = res.headers.get("Last-Modified", "not provided")
-    content = res.content
-    compression = "gzip" if content[:2] == b"\x1f\x8b" else None
-    raw = pd.read_csv(io.BytesIO(content), compression=compression)
+    raw, headers = download_csv(url)
+    file_modified = headers.get("Last-Modified", "not provided")
     latest_season = raw["last_season"].max() if "last_season" in raw.columns else "unknown"
     if "last_season" in raw.columns:
         raw = raw[raw["last_season"] == raw["last_season"].max()]
@@ -57,22 +69,28 @@ def load_players(url):
     else:
         df.insert(1, "Age", pd.NA)
     if "player_id" in raw.columns:
-        ids = raw["player_id"].astype("Int64").astype(str)
-        df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + ids
+        ids = raw["player_id"].astype("Int64")
+        df["player_id"] = ids
+        df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + ids.astype(str)
     if "Market Value (€)" in df.columns:
         df = df.sort_values("Market Value (€)", ascending=False, na_position="last")
     return df.reset_index(drop=True), file_modified, str(latest_season)
 
 
 @st.cache_data(ttl=3600)
-def fetch_live_club(profile_url):
-    res = requests.get(profile_url, headers=HEADERS, timeout=30)
-    if res.status_code != 200:
-        raise RuntimeError(f"Transfermarkt returned status {res.status_code}")
-    match = re.search(r'data-header__club.{0,400}?title="([^"]+)"', res.text, re.DOTALL)
-    if not match:
-        raise RuntimeError("Could not find the club on the profile page")
-    return match.group(1)
+def load_latest_transfers(url):
+    tr, _ = download_csv(url)
+    tr["transfer_date"] = pd.to_datetime(tr["transfer_date"], errors="coerce")
+    tr = tr.dropna(subset=["transfer_date"])
+    tr = tr[tr["transfer_date"] <= pd.Timestamp.today()]
+    tr = tr.sort_values("transfer_date")
+    last = tr.groupby("player_id").tail(1)
+    out = pd.DataFrame({
+        "player_id": last["player_id"].astype("Int64"),
+        "Latest Club": last["to_club_name"],
+        "Last Transfer": last["transfer_date"].dt.strftime("%Y-%m-%d"),
+    })
+    return out.reset_index(drop=True)
 
 
 try:
@@ -81,7 +99,21 @@ except Exception as e:
     st.error(f"Could not load data: {e}")
     st.stop()
 
-st.caption(f"File last modified: {file_modified} | Latest season in file: {latest_season}")
+caption = f"File last modified: {file_modified} | Latest season in file: {latest_season}"
+
+if "Club" in df.columns and "player_id" in df.columns:
+    try:
+        latest = load_latest_transfers(transfers_url)
+        caption += f" | Latest transfer in file: {latest['Last Transfer'].max()}"
+        df = df.merge(latest, on="player_id", how="left")
+        df = df.rename(columns={"Club": "Club (data file)"})
+        df["Club"] = df["Latest Club"].fillna(df["Club (data file)"])
+    except Exception as e:
+        st.warning(f"Could not load transfers file: {e}")
+
+st.caption(caption)
+
+df = df[[c for c in ORDER if c in df.columns]]
 
 st.sidebar.header("Filter Players")
 
@@ -126,25 +158,3 @@ try:
     st.dataframe(df, hide_index=True, use_container_width=True, column_config=money_config)
 except Exception:
     st.dataframe(df, hide_index=True, use_container_width=True, column_config=column_config)
-
-st.subheader("Live check")
-st.caption("Reads the current club directly from the player's Transfermarkt profile page.")
-
-if "Transfermarkt" in df.columns and len(df) > 0:
-    subset = df.head(50).reset_index(drop=True)
-    if len(df) > 50:
-        st.caption("Showing the first 50 players of the current filter. Narrow the search to find others.")
-    choice = st.selectbox(
-        "Player",
-        options=list(range(len(subset))),
-        format_func=lambda i: f"{subset.iloc[i]['Name']} - {subset.iloc[i].get('Club', '')}",
-    )
-    if st.button("Check live club"):
-        try:
-            live_club = fetch_live_club(subset.iloc[choice]["Transfermarkt"])
-            st.success(f"Live club per Transfermarkt: {live_club}")
-            file_club = subset.iloc[choice].get("Club", "")
-            if file_club and str(file_club) != live_club:
-                st.warning(f"The data file says: {file_club}")
-        except Exception as e:
-            st.error(f"Live check failed: {e}")
