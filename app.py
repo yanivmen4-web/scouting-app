@@ -309,3 +309,78 @@ with st.expander("Apify input generator (clubs)"):
     for n, batch in enumerate(batches, start=1):
         st.write(f"Batch {n} ({len(batch)} clubs)")
         st.code(json.dumps({"scrapeType": "clubs", "items": batch}, indent=2), language="json")
+
+
+
+
+import re
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_apify_players(token):
+    api = "https://api.apify.com/v2"
+    auth = {"Authorization": f"Bearer {token}"}
+    actor = "data_xplorer~transfermarkt-api-scraper"
+    res = requests.get(
+        f"{api}/acts/{actor}/runs",
+        params={"status": "SUCCEEDED", "desc": "true", "limit": 200},
+        headers=auth,
+        timeout=60,
+    )
+    if res.status_code != 200:
+        raise RuntimeError(f"Runs list failed: {res.status_code} {res.text[:200]}")
+    runs = res.json()["data"]["items"]
+    rows = []
+    seen = set()
+    for run in runs:
+        items = requests.get(
+            f"{api}/datasets/{run['defaultDatasetId']}/items",
+            params={"fields": "clubName,clubUrl,clubSquad", "clean": "true"},
+            headers=auth,
+            timeout=120,
+        )
+        if items.status_code != 200:
+            continue
+        data = items.json()
+        if not isinstance(data, list):
+            continue
+        for club in data:
+            for p in club.get("clubSquad") or []:
+                match = re.search(r"/spieler/(\d+)", str(p.get("playerUrl", "")))
+                if not match or match.group(1) in seen:
+                    continue
+                seen.add(match.group(1))
+                rows.append({
+                    "player_id": int(match.group(1)),
+                    "Name": p.get("name"),
+                    "Nationalities": ", ".join(p.get("nationalities") or []),
+                    "Age": p.get("age"),
+                    "Contract": p.get("contract"),
+                    "Market Value": p.get("marketValue"),
+                    "Club": club.get("clubName"),
+                })
+    return pd.DataFrame(rows), len(runs)
+
+
+with st.expander("Apify data check"):
+    try:
+        token = st.secrets["APIFY_TOKEN"]
+    except Exception:
+        token = ""
+    if not token:
+        st.error("APIFY_TOKEN is missing from the app secrets")
+    elif st.button("Load Apify data"):
+        try:
+            with st.spinner("Loading data from Apify..."):
+                apify_df, run_count = load_apify_players(token)
+            if apify_df.empty:
+                st.warning(f"{run_count} runs found, but no squad data in them")
+            else:
+                names = apify_df["Nationalities"].str.split(", ")
+                israel_count = int(names.apply(lambda x: "Israel" in x).sum())
+                eu_count = int(names.apply(lambda x: any(c.lower() in EU for c in x)).sum())
+                st.write(f"{run_count} runs, {len(apify_df)} players")
+                st.write(f"Israel among citizenships: {israel_count} | EU among citizenships: {eu_count}")
+                st.dataframe(apify_df.head(20), hide_index=True)
+        except Exception as e:
+            st.error(f"Could not load Apify data: {e}")
