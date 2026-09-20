@@ -32,14 +32,16 @@ st.sidebar.header("Data Source")
 data_url = st.sidebar.text_input("Players file URL", value=DEFAULT_URL)
 
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=3600)
 def load_players(url):
     res = requests.get(url, headers=HEADERS, timeout=60)
     if res.status_code != 200:
         raise RuntimeError(f"Server returned status {res.status_code}")
+    file_modified = res.headers.get("Last-Modified", "not provided")
     content = res.content
     compression = "gzip" if content[:2] == b"\x1f\x8b" else None
     raw = pd.read_csv(io.BytesIO(content), compression=compression)
+    latest_season = raw["last_season"].max() if "last_season" in raw.columns else "unknown"
     if "last_season" in raw.columns:
         raw = raw[raw["last_season"] == raw["last_season"].max()]
     keep = [c for c in COLUMNS if c in raw.columns]
@@ -52,14 +54,16 @@ def load_players(url):
         df.insert(1, "Age", pd.NA)
     if "Market Value (€)" in df.columns:
         df = df.sort_values("Market Value (€)", ascending=False, na_position="last")
-    return df.reset_index(drop=True)
+    return df.reset_index(drop=True), file_modified, str(latest_season)
 
 
 try:
-    df = load_players(data_url)
+    df, file_modified, latest_season = load_players(data_url)
 except Exception as e:
     st.error(f"Could not load data: {e}")
     st.stop()
+
+st.caption(f"File last modified: {file_modified} | Latest season in file: {latest_season}")
 
 st.sidebar.header("Filter Players")
 
