@@ -291,3 +291,21 @@ if saved and saved[0] == signature:
         st.download_button(label, data=file_bytes, file_name=file_name, mime=file_mime)
 elif saved:
     st.caption("The filters changed since the file was prepared. Press Prepare Excel file again.")
+
+
+
+
+import json
+
+with st.expander("Apify input generator (clubs)"):
+    orig, _ = load_players(data_url)
+    clubs = orig.dropna(subset=["Club ID"]).drop_duplicates("Club ID")
+    urls = [
+        f"https://www.transfermarkt.com/-/startseite/verein/{int(i)}"
+        for i in clubs["Club ID"]
+    ]
+    batches = [urls[i:i + 100] for i in range(0, len(urls), 100)]
+    st.write(f"{len(urls)} clubs in {len(batches)} batches of up to 100")
+    for n, batch in enumerate(batches, start=1):
+        st.write(f"Batch {n} ({len(batch)} clubs)")
+        st.code(json.dumps({"scrapeType": "clubs", "items": batch}, indent=2), language="json")
