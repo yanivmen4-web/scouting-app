@@ -82,6 +82,28 @@ def club_link(name, club_id):
 
 
 @st.cache_data(ttl=3600)
+
+
+POS_CODES = {
+    "Goalkeeper": "GK",
+    "Centre-Back": "CB",
+    "Right-Back": "RB",
+    "Left-Back": "LB",
+    "Defensive Midfield": "DMC",
+    "Central Midfield": "CM",
+    "Attacking Midfield": "AMC",
+    "Right Midfield": "RM",
+    "Left Midfield": "LM",
+    "Right Winger": "RW",
+    "Left Winger": "LW",
+    "Second Striker": "SS",
+    "Centre-Forward": "SC",
+}
+FOOT_CODES = {"right": "R", "left": "L", "both": "Both"}
+COLUMNS["foot"] = "Foot"
+
+
+@st.cache_data(ttl=3600)
 def load_players(url):
     raw, headers = download_csv(url)
     file_modified = headers.get("Last-Modified", "")
@@ -101,14 +123,12 @@ def load_players(url):
         df["Age"] = ((pd.Timestamp.today() - dob).dt.days // 365.25).astype("Int64")
     else:
         df["Age"] = pd.NA
-    cit = df["Citizenship"].fillna("").astype(str).str.strip().str.lower().isin(EU)
-    born = df["Birth Country"].fillna("").astype(str).str.strip().str.lower().isin(EU)
-    df["EU"] = "-"
-    df.loc[cit & ~born, "EU"] = "Citizenship"
-    df.loc[~cit & born, "EU"] = "Birth"
-    df.loc[cit & born, "EU"] = "Both"
-    place = df["Birth City"].fillna("").astype(str) + ", " + df["Birth Country"].fillna("").astype(str)
-    df["Place of Birth"] = place.str.strip(", ").replace("", pd.NA)
+    cit = df["Citizenship"].fillna("").astype(str).str.strip().str.lower()
+    born = df["Birth Country"].fillna("").astype(str).str.strip().str.lower()
+    df["EU"] = (cit.isin(EU) | born.isin(EU)).map({True: "YES", False: "NO"})
+    df["Israeli"] = ((cit == "israel") | (born == "israel")).map({True: "YES", False: "NO"})
+    df["Position"] = df["Sub Position"].map(POS_CODES)
+    df["Foot"] = df["Foot"].astype(str).str.strip().str.lower().map(FOOT_CODES)
     if "player_id" in raw.columns:
         df["player_id"] = raw["player_id"].astype("Int64")
         df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
@@ -142,130 +162,3 @@ except Exception as e:
     st.warning(f"Could not load transfers file: {e}")
 
 df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
-
-try:
-    updated = pd.to_datetime(file_modified, utc=True)
-    days = (pd.Timestamp.now(tz="UTC") - updated).days
-    note = (
-        f"Data last updated: {updated.strftime('%d %b %Y')} ({days} days ago). "
-        f"Latest transfer in the data: {latest_transfer_date}."
-    )
-    if days > 7:
-        st.warning(note + " Changes after these dates are not included. Verify with the Transfermarkt link.")
-    else:
-        st.success(note)
-except Exception:
-    st.info(f"Data last updated: {file_modified or 'unknown'}")
-
-
-
-
-st.sidebar.header("Filter Players")
-
-search_name = st.sidebar.text_input("Search by name")
-search_club = st.sidebar.text_input("Search by club")
-
-ages = df["Age"].dropna()
-age_range = None
-if len(ages) > 0 and ages.min() < ages.max():
-    age_min, age_max = int(ages.min()), int(ages.max())
-    age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max))
-
-positions = sorted(df["Position"].dropna().unique().tolist())
-selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
-
-value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
-st.sidebar.write("Market value (€)")
-col_from, col_to = st.sidebar.columns(2)
-value_from = col_from.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
-value_to = col_to.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
-
-eu_choice = st.sidebar.radio(
-    "EU passport",
-    [
-        "All players",
-        "EU citizenship or EU birth country",
-        "EU citizenship only",
-        "Born in EU only",
-    ],
-)
-
-mask = pd.Series(True, index=df.index)
-if search_name:
-    mask &= df["Name"].astype(str).str.contains(search_name, case=False, na=False, regex=False)
-if search_club:
-    mask &= df["Club Name"].astype(str).str.contains(search_club, case=False, na=False, regex=False)
-if age_range:
-    mask &= df["Age"].between(age_range[0], age_range[1]).fillna(False).astype(bool)
-if len(selected_positions) < len(positions):
-    mask &= df["Position"].isin(selected_positions)
-if value_from > 0 or value_to < value_cap:
-    mask &= df["Market Value (€)"].between(value_from, value_to).fillna(False)
-if eu_choice == "EU citizenship or EU birth country":
-    mask &= df["EU"] != "-"
-elif eu_choice == "EU citizenship only":
-    mask &= df["EU"].isin(["Citizenship", "Both"])
-elif eu_choice == "Born in EU only":
-    mask &= df["EU"].isin(["Birth", "Both"])
-
-df = df[mask]
-
-
-
-
-st.write(f"Showing **{len(df)}** players:")
-
-SHOW = [
-    "Name", "Transfermarkt", "Age", "Position", "Sub Position", "Club",
-    "Last Transfer", "Citizenship", "Place of Birth", "EU",
-    "Market Value (€)", "Contract Expires", "Agent",
-]
-display_df = df[[c for c in SHOW if c in df.columns]]
-
-column_config = {
-    "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
-    "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
-}
-
-try:
-    money_config = dict(column_config)
-    money_config["Market Value (€)"] = st.column_config.NumberColumn(
-        "Market Value (€)", format="localized"
-    )
-    st.dataframe(display_df, hide_index=True, width="stretch", column_config=money_config)
-except Exception:
-    st.dataframe(display_df, hide_index=True, width="stretch", column_config=column_config)
-
-
-def make_export(frame):
-    try:
-        buffer = io.BytesIO()
-        frame.to_excel(buffer, index=False, sheet_name="Players")
-        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        return buffer.getvalue(), "players.xlsx", mime
-    except ImportError:
-        data = frame.to_csv(index=False).encode("utf-8-sig")
-        return data, "players.csv", "text/csv"
-
-
-st.subheader("Export")
-
-export_df = display_df.copy()
-export_df["Club"] = df["Club Name"]
-name_hash = pd.util.hash_pandas_object(export_df["Name"].astype(str), index=False).sum()
-signature = (len(export_df), int(name_hash))
-
-if st.button("Prepare Excel file"):
-    with st.spinner("Preparing file..."):
-        st.session_state["export"] = (signature, make_export(export_df))
-
-saved = st.session_state.get("export")
-if saved and saved[0] == signature:
-    file_bytes, file_name, file_mime = saved[1]
-    label = f"Download {file_name} ({len(export_df)} players)"
-    try:
-        st.download_button(label, data=file_bytes, file_name=file_name, mime=file_mime, on_click="ignore")
-    except TypeError:
-        st.download_button(label, data=file_bytes, file_name=file_name, mime=file_mime)
-elif saved:
-    st.caption("The filters changed since the file was prepared. Press Prepare Excel file again.")
