@@ -156,3 +156,56 @@ try:
         st.success(note)
 except Exception:
     st.info(f"Data last updated: {file_modified or 'unknown'}")
+
+
+
+
+st.sidebar.header("Filter Players")
+
+search_name = st.sidebar.text_input("Search by name")
+search_club = st.sidebar.text_input("Search by club")
+
+ages = df["Age"].dropna()
+age_range = None
+if len(ages) > 0 and ages.min() < ages.max():
+    age_min, age_max = int(ages.min()), int(ages.max())
+    age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max))
+
+positions = sorted(df["Position"].dropna().unique().tolist())
+selected_positions = st.sidebar.multiselect("Position", positions, default=positions)
+
+value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
+st.sidebar.write("Market value (€)")
+col_from, col_to = st.sidebar.columns(2)
+value_from = col_from.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
+value_to = col_to.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
+
+eu_choice = st.sidebar.radio(
+    "EU passport",
+    [
+        "All players",
+        "EU citizenship or EU birth country",
+        "EU citizenship only",
+        "Born in EU only",
+    ],
+)
+
+mask = pd.Series(True, index=df.index)
+if search_name:
+    mask &= df["Name"].astype(str).str.contains(search_name, case=False, na=False, regex=False)
+if search_club:
+    mask &= df["Club Name"].astype(str).str.contains(search_club, case=False, na=False, regex=False)
+if age_range:
+    mask &= df["Age"].between(age_range[0], age_range[1]).fillna(False).astype(bool)
+if len(selected_positions) < len(positions):
+    mask &= df["Position"].isin(selected_positions)
+if value_from > 0 or value_to < value_cap:
+    mask &= df["Market Value (€)"].between(value_from, value_to).fillna(False)
+if eu_choice == "EU citizenship or EU birth country":
+    mask &= df["EU"] != "-"
+elif eu_choice == "EU citizenship only":
+    mask &= df["EU"].isin(["Citizenship", "Both"])
+elif eu_choice == "Born in EU only":
+    mask &= df["EU"].isin(["Birth", "Both"])
+
+df = df[mask]
