@@ -28,8 +28,8 @@ COLUMNS = {
 
 ORDER = [
     "Name", "Transfermarkt", "Age", "Position", "Sub Position", "Club",
-    "Last Transfer", "Nationality", "Market Value (€)", "Contract Expires",
-    "Agent", "Club Name",
+    "Last Transfer", "Club (players file)", "Club (latest transfer)", "Transfer From",
+    "Nationality", "Market Value (€)", "Contract Expires", "Agent", "Club Name",
 ]
 
 HEADERS = {
@@ -95,6 +95,7 @@ def load_latest_transfers(url):
         "player_id": last["player_id"].astype("Int64"),
         "Latest Club": last["to_club_name"],
         "Latest Club ID": last["to_club_id"].astype("Int64"),
+        "Latest From": last["from_club_name"],
         "Last Transfer": last["transfer_date"].dt.strftime("%Y-%m-%d"),
     })
     return out.reset_index(drop=True)
@@ -119,6 +120,7 @@ except Exception as e:
 caption = f"File last modified: {file_modified} | Latest season in file: {latest_season}"
 
 df["Club Name"] = df["Club"] if "Club" in df.columns else pd.NA
+df["Club (players file)"] = df["Club Name"]
 
 if "Club" in df.columns and "player_id" in df.columns:
     try:
@@ -129,6 +131,8 @@ if "Club" in df.columns and "player_id" in df.columns:
         has_latest = df["Latest Club"].notna()
         df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
         df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
+        df["Club (latest transfer)"] = df["Latest Club"]
+        df["Transfer From"] = df["Latest From"]
     except Exception as e:
         st.warning(f"Could not load transfers file: {e}")
 
