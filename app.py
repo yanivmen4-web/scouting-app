@@ -46,6 +46,9 @@ def load_players(url):
         raw = raw[raw["last_season"] == raw["last_season"].max()]
     keep = [c for c in COLUMNS if c in raw.columns]
     df = raw[keep].rename(columns=COLUMNS)
+    if "Contract Expires" in df.columns:
+        contract = pd.to_datetime(df["Contract Expires"], errors="coerce")
+        df["Contract Expires"] = contract.dt.strftime("%Y-%m-%d")
     if "date_of_birth" in raw.columns:
         dob = pd.to_datetime(raw["date_of_birth"], errors="coerce")
         age = (pd.Timestamp.today() - dob).dt.days // 365.25
