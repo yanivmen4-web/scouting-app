@@ -8,14 +8,14 @@ st.title("CMA Scouting Tool")
 st.write("Live Transfermarkt Squad Search")
 
 st.sidebar.header("Search Settings")
+base_url = st.sidebar.text_input("API Base URL", value="https://transfermarkt-api.fly.dev")
 club_id = st.sidebar.text_input("Transfermarkt Club ID", value="500")
 
 
 @st.cache_data(ttl=3600)
-def fetch_club_players(c_id):
-    url = f"https://api.transfermarkt-api.visiting.fans/clubs/{c_id}/players"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(url, headers=headers, timeout=20)
+def fetch_club_players(api_url, c_id):
+    url = f"{api_url.rstrip('/')}/clubs/{c_id}/players"
+    res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
     if res.status_code != 200:
         raise RuntimeError(f"Server returned status {res.status_code}")
     rows = []
@@ -30,7 +30,7 @@ def fetch_club_players(c_id):
 
 
 try:
-    df = fetch_club_players(club_id)
+    df = fetch_club_players(base_url, club_id)
 except Exception as e:
     st.error(f"Could not load data: {e}")
     st.stop()
