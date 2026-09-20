@@ -90,3 +90,50 @@ def club_link(name, club_id):
         return f"https://www.transfermarkt.com/-/startseite/verein/{int(club_id)}#{name}"
     search = "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="
     return f"{search}{quote(str(name))}#{name}"
+
+
+@st.cache_data(ttl=3600)
+def load_latest_transfers(url):
+    tr, _ = download_csv(url)
+    tr["transfer_date"] = pd.to_datetime(tr["transfer_date"], errors="coerce")
+    tr = tr.dropna(subset=["transfer_date"])
+    tr = tr[tr["transfer_date"] <= pd.Timestamp.today()]
+    tr = tr.sort_values("transfer_date")
+    last = tr.groupby("player_id").tail(1)
+    out = pd.DataFrame({
+        "player_id": last["player_id"].astype("Int64"),
+        "Latest Club": last["to_club_name"],
+        "Latest Club ID": last["to_club_id"].astype("Int64"),
+        "Last Transfer": last["transfer_date"].dt.strftime("%Y-%m-%d"),
+    })
+    return out.reset_index(drop=True)
+
+
+try:
+    with st.spinner("Loading players file..."):
+        df, file_modified, latest_season = load_players(data_url)
+except Exception as e:
+    st.error(f"Could not load data: {e}")
+    st.stop()
+
+caption = f"File last modified: {file_modified} | Latest season in file: {latest_season}"
+
+df["Club Name"] = df["Club"] if "Club" in df.columns else pd.NA
+
+if "Club" in df.columns and "player_id" in df.columns:
+    try:
+        with st.spinner("Loading transfers file..."):
+            latest = load_latest_transfers(transfers_url)
+        caption += f" | Latest transfer in file: {latest['Last Transfer'].max()}"
+        df = df.merge(latest, on="player_id", how="left")
+        has_latest = df["Latest Club"].notna()
+        df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
+        df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
+    except Exception as e:
+        st.warning(f"Could not load transfers file: {e}")
+
+df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
+
+st.caption(caption)
+
+df = df[[c for c in ORDER if c in df.columns]]
