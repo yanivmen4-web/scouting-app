@@ -160,3 +160,75 @@ except Exception as e:
 df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 
 
+
+
+
+
+try:
+    updated = pd.to_datetime(file_modified, utc=True)
+    days = (pd.Timestamp.now(tz="UTC") - updated).days
+    note = (
+        f"Data last updated: {updated.strftime('%d %b %Y')} ({days} days ago). "
+        f"Latest transfer in the data: {latest_transfer_date}."
+    )
+    if days > 7:
+        st.warning(note + " Changes after these dates are not included. Verify with the Transfermarkt link.")
+    else:
+        st.success(note)
+except Exception:
+    st.info(f"Data last updated: {file_modified or 'unknown'}")
+
+st.markdown(
+    "<style>[data-testid='stSidebar'][aria-expanded='true'] {min-width: 380px;}</style>",
+    unsafe_allow_html=True,
+)
+
+st.sidebar.header("Filter Players")
+
+search_name = st.sidebar.text_input("Search by name")
+search_club = st.sidebar.text_input("Search by club")
+
+ages = df["Age"].dropna()
+age_range = None
+if len(ages) > 0 and ages.min() < ages.max():
+    age_min, age_max = int(ages.min()), int(ages.max())
+    age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max))
+
+selected_positions = st.sidebar.multiselect(
+    "Position (empty = all)", list(POS_CODES.values())
+)
+
+value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
+st.sidebar.write("Market value (€)")
+value_from = st.sidebar.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
+st.sidebar.caption(f"From: {value_from:,}")
+value_to = st.sidebar.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
+st.sidebar.caption(f"To: {value_to:,}")
+
+foot_choice = st.sidebar.radio("Foot", ["All", "R", "L"], horizontal=True)
+eu_choice = st.sidebar.radio("EU passport", ["All", "YES", "NO"], horizontal=True)
+israeli_choice = st.sidebar.radio("Israeli", ["All", "YES", "NO"], horizontal=True)
+st.sidebar.caption(
+    "EU and Israeli are based on primary citizenship and birth country. "
+    "Additional passports are not included."
+)
+
+mask = pd.Series(True, index=df.index)
+if search_name:
+    mask &= df["Name"].astype(str).str.contains(search_name, case=False, na=False, regex=False)
+if search_club:
+    mask &= df["Club Name"].astype(str).str.contains(search_club, case=False, na=False, regex=False)
+if age_range:
+    mask &= df["Age"].between(age_range[0], age_range[1]).fillna(False).astype(bool)
+if selected_positions:
+    mask &= df["Position"].isin(selected_positions)
+if foot_choice != "All":
+    mask &= df["Foot"].isin([foot_choice, "Both"])
+if value_from > 0 or value_to < value_cap:
+    mask &= df["Market Value (€)"].between(value_from, value_to).fillna(False)
+if eu_choice != "All":
+    mask &= df["EU"] == eu_choice
+if israeli_choice != "All":
+    mask &= df["Israeli"] == israeli_choice
+
+df = df[mask]
