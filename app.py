@@ -1,4 +1,5 @@
 import io
+from urllib.parse import quote
 
 import pandas as pd
 import requests
@@ -18,6 +19,7 @@ COLUMNS = {
     "position": "Position",
     "sub_position": "Sub Position",
     "current_club_name": "Club",
+    "current_club_id": "Club ID",
     "country_of_citizenship": "Nationality",
     "market_value_in_eur": "Market Value (€)",
     "contract_expiration_date": "Contract Expires",
@@ -27,7 +29,7 @@ COLUMNS = {
 ORDER = [
     "Name", "Transfermarkt", "Age", "Position", "Sub Position", "Club",
     "Last Transfer", "Nationality", "Market Value (€)", "Contract Expires",
-    "Agent",
+    "Agent", "Club Name",
 ]
 
 HEADERS = {
@@ -59,6 +61,10 @@ def load_players(url):
         raw = raw[raw["last_season"] == raw["last_season"].max()]
     keep = [c for c in COLUMNS if c in raw.columns]
     df = raw[keep].rename(columns=COLUMNS)
+    if "Club ID" in df.columns:
+        df["Club ID"] = df["Club ID"].astype("Int64")
+    else:
+        df["Club ID"] = pd.NA
     if "Contract Expires" in df.columns:
         contract = pd.to_datetime(df["Contract Expires"], errors="coerce")
         df["Contract Expires"] = contract.dt.strftime("%Y-%m-%d")
@@ -88,9 +94,19 @@ def load_latest_transfers(url):
     out = pd.DataFrame({
         "player_id": last["player_id"].astype("Int64"),
         "Latest Club": last["to_club_name"],
+        "Latest Club ID": last["to_club_id"].astype("Int64"),
         "Last Transfer": last["transfer_date"].dt.strftime("%Y-%m-%d"),
     })
     return out.reset_index(drop=True)
+
+
+def club_link(name, club_id):
+    if pd.isna(name):
+        return None
+    if pd.notna(club_id):
+        return f"https://www.transfermarkt.com/-/startseite/verein/{int(club_id)}#{name}"
+    search = "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="
+    return f"{search}{quote(str(name))}#{name}"
 
 
 try:
@@ -102,16 +118,21 @@ except Exception as e:
 
 caption = f"File last modified: {file_modified} | Latest season in file: {latest_season}"
 
+df["Club Name"] = df["Club"] if "Club" in df.columns else pd.NA
+
 if "Club" in df.columns and "player_id" in df.columns:
     try:
         with st.spinner("Loading transfers file..."):
             latest = load_latest_transfers(transfers_url)
         caption += f" | Latest transfer in file: {latest['Last Transfer'].max()}"
         df = df.merge(latest, on="player_id", how="left")
-        df = df.rename(columns={"Club": "Club (data file)"})
-        df["Club"] = df["Latest Club"].fillna(df["Club (data file)"])
+        has_latest = df["Latest Club"].notna()
+        df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
+        df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
     except Exception as e:
         st.warning(f"Could not load transfers file: {e}")
+
+df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 
 st.caption(caption)
 
@@ -123,10 +144,9 @@ search_name = st.sidebar.text_input("Search by name")
 if search_name:
     df = df[df["Name"].str.contains(search_name, case=False, na=False)]
 
-if "Club" in df.columns:
-    search_club = st.sidebar.text_input("Search by club")
-    if search_club:
-        df = df[df["Club"].str.contains(search_club, case=False, na=False)]
+search_club = st.sidebar.text_input("Search by club")
+if search_club:
+    df = df[df["Club Name"].str.contains(search_club, case=False, na=False)]
 
 if df["Age"].notna().any():
     min_age = int(df["Age"].min())
@@ -147,16 +167,20 @@ if "Market Value (€)" in df.columns:
 
 st.write(f"Showing **{len(df)}** players:")
 
+display_df = df.drop(columns=["Club Name"], errors="ignore")
+
 column_config = {}
-if "Transfermarkt" in df.columns:
+if "Transfermarkt" in display_df.columns:
     column_config["Transfermarkt"] = st.column_config.LinkColumn("Transfermarkt", display_text="Open")
+if "Club" in display_df.columns:
+    column_config["Club"] = st.column_config.LinkColumn("Club", display_text=r"#(.*)$")
 
 try:
     money_config = dict(column_config)
-    if "Market Value (€)" in df.columns:
+    if "Market Value (€)" in display_df.columns:
         money_config["Market Value (€)"] = st.column_config.NumberColumn(
             "Market Value (€)", format="localized"
         )
-    st.dataframe(df, hide_index=True, width="stretch", column_config=money_config)
+    st.dataframe(display_df, hide_index=True, width="stretch", column_config=money_config)
 except Exception:
-    st.dataframe(df, hide_index=True, width="stretch", column_config=column_config)
+    st.dataframe(display_df, hide_index=True, width="stretch", column_config=column_config)
