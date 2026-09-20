@@ -194,10 +194,23 @@ selected_positions = st.sidebar.multiselect(
 )
 
 value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
+def parse_amount(text, default):
+    text = str(text).strip().lower().replace(",", "").replace("€", "").replace(" ", "")
+    factor = 1
+    if text.endswith("m"):
+        factor, text = 1_000_000, text[:-1]
+    elif text.endswith("k"):
+        factor, text = 1_000, text[:-1]
+    try:
+        return max(0, int(float(text) * factor))
+    except ValueError:
+        return default
+
+
 st.sidebar.write("Market value (€)")
-col_from, col_to = st.sidebar.columns(2)
-value_from = col_from.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
-value_to = col_to.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
+value_from = parse_amount(st.sidebar.text_input("From", value="0"), 0)
+value_to = parse_amount(st.sidebar.text_input("To", value=f"{value_cap:,}"), value_cap)
+st.sidebar.caption(f"Range: {value_from:,} - {value_to:,}")
 
 foot_choice = st.sidebar.radio("Foot", ["All", "R", "L"], horizontal=True)
 eu_choice = st.sidebar.radio("EU passport", ["All", "YES", "NO"], horizontal=True)
