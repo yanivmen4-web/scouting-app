@@ -44,7 +44,7 @@ with st.sidebar.expander("Data source"):
     transfers_url = st.text_input("Transfers file URL", value=BASE + "transfers.csv.gz")
 
 
- download_csv(url):
+def download_csv(url):
     res = requests.get(url, headers=HEADERS, timeout=60)
     if res.status_code != 200:
         raise RuntimeError(f"Server returned status {res.status_code}")
