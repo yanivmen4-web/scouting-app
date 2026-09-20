@@ -77,3 +77,86 @@ def club_link(name, club_id):
         return f"https://www.transfermarkt.com/-/startseite/verein/{int(club_id)}#{name}"
     search = "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="
     return f"{search}{quote(str(name))}#{name}"
+
+
+
+POS_CODES = {
+    "Goalkeeper": "GK",
+    "Centre-Back": "CB",
+    "Right-Back": "RB",
+    "Left-Back": "LB",
+    "Defensive Midfield": "DMC",
+    "Central Midfield": "CM",
+    "Attacking Midfield": "AMC",
+    "Right Midfield": "RM",
+    "Left Midfield": "LM",
+    "Right Winger": "RW",
+    "Left Winger": "LW",
+    "Second Striker": "SS",
+    "Centre-Forward": "SC",
+}
+FOOT_CODES = {"right": "R", "left": "L", "both": "Both"}
+COLUMNS["foot"] = "Foot"
+
+
+@st.cache_data(ttl=3600)
+def load_players(url):
+    raw, headers = download_csv(url)
+    file_modified = headers.get("Last-Modified", "")
+    if "last_season" in raw.columns:
+        raw = raw[raw["last_season"] == raw["last_season"].max()]
+    keep = [c for c in COLUMNS if c in raw.columns]
+    df = raw[keep].rename(columns=COLUMNS)
+    for col in COLUMNS.values():
+        if col not in df.columns:
+            df[col] = pd.NA
+    df["Club ID"] = pd.to_numeric(df["Club ID"], errors="coerce").astype("Int64")
+    df["Market Value (€)"] = pd.to_numeric(df["Market Value (€)"], errors="coerce")
+    contract = pd.to_datetime(df["Contract Expires"], errors="coerce")
+    df["Contract Expires"] = contract.dt.strftime("%Y-%m-%d")
+    if "date_of_birth" in raw.columns:
+        dob = pd.to_datetime(raw["date_of_birth"], errors="coerce")
+        df["Age"] = ((pd.Timestamp.today() - dob).dt.days // 365.25).astype("Int64")
+    else:
+        df["Age"] = pd.NA
+    cit = df["Citizenship"].fillna("").astype(str).str.strip().str.lower()
+    born = df["Birth Country"].fillna("").astype(str).str.strip().str.lower()
+    df["EU"] = (cit.isin(EU) | born.isin(EU)).map({True: "YES", False: "NO"})
+    df["Israeli"] = ((cit == "israel") | (born == "israel")).map({True: "YES", False: "NO"})
+    df["Position"] = df["Sub Position"].map(POS_CODES)
+    df["Foot"] = df["Foot"].astype(str).str.strip().str.lower().map(FOOT_CODES)
+    if "player_id" in raw.columns:
+        df["player_id"] = raw["player_id"].astype("Int64")
+        df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
+    else:
+        df["player_id"] = pd.NA
+        df["Transfermarkt"] = pd.NA
+    df = df.sort_values("Market Value (€)", ascending=False, na_position="last")
+    return df.reset_index(drop=True), file_modified
+
+
+try:
+    with st.spinner("Loading players file..."):
+        df, file_modified = load_players(data_url)
+except Exception as e:
+    st.error(f"Could not load data: {e}")
+    st.stop()
+
+df["Club Name"] = df["Club"]
+df["Last Transfer"] = pd.NA
+latest_transfer_date = "unknown"
+
+try:
+    with st.spinner("Loading transfers file..."):
+        latest = load_latest_transfers(transfers_url)
+    latest_transfer_date = latest["Last Transfer"].max()
+    df = df.drop(columns=["Last Transfer"]).merge(latest, on="player_id", how="left")
+    has_latest = df["Latest Club"].notna()
+    df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
+    df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
+except Exception as e:
+    st.warning(f"Could not load transfers file: {e}")
+
+df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
+
+
