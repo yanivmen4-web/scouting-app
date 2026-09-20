@@ -81,7 +81,6 @@ def club_link(name, club_id):
 
 
 
-@st.cache_data(ttl=3600)
 
 
 POS_CODES = {
