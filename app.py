@@ -185,3 +185,109 @@ try:
     st.dataframe(display_df, hide_index=True, width="stretch", column_config=money_config)
 except Exception:
     st.dataframe(display_df, hide_index=True, width="stretch", column_config=column_config)
+
+
+
+
+st.subheader("Live check")
+st.caption("Fetches current details for one player from a live Transfermarkt scraper (paid service, tiny cost per player).")
+
+APIFY_ACTOR = "data_xplorer~transfermarkt-api-scraper"
+
+
+def get_token():
+    try:
+        return st.secrets["APIFY_TOKEN"]
+    except Exception:
+        return ""
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_live_player(profile_url, token):
+    endpoint = f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items"
+    payload = {
+        "scrapeType": "players",
+        "items": [profile_url],
+        "playersWithoutStatistics": True,
+        "proxyConfig": {"useApifyProxy": True},
+    }
+    res = requests.post(
+        endpoint,
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=300,
+    )
+    if res.status_code not in (200, 201):
+        raise RuntimeError(f"Apify returned status {res.status_code}: {res.text[:300]}")
+    items = res.json()
+    if not items:
+        raise RuntimeError("No data returned for this player")
+    return items[0]
+
+
+def latest_transfer(data):
+    rows = data.get("transferHistory") or []
+    today = pd.Timestamp.today().normalize()
+    past = []
+    for r in rows:
+        d = pd.to_datetime(r.get("date"), errors="coerce")
+        if pd.notna(d) and d <= today:
+            past.append((d, r))
+    if not past:
+        return None
+    past.sort(key=lambda x: x[0])
+    return past[-1][1]
+
+
+def loan_status(transfer):
+    if not transfer:
+        return "Unknown"
+    fee = str(transfer.get("fee", "")).lower()
+    if "end of loan" in fee or "return" in fee:
+        return "No"
+    return "Yes" if "loan" in fee else "No"
+
+
+token = get_token()
+
+if "Transfermarkt" in df.columns and len(df) > 0:
+    subset = df.head(50).reset_index(drop=True)
+    if len(df) > 50:
+        st.caption("Showing the first 50 players of the current filter. Narrow the search to find others.")
+    choice = st.selectbox(
+        "Player",
+        options=list(range(len(subset))),
+        format_func=lambda i: f"{subset.iloc[i]['Name']} - {subset.iloc[i].get('Club Name', '')}",
+    )
+    if st.button("Run live check"):
+        if not token:
+            st.error("APIFY_TOKEN is missing from the app secrets")
+        else:
+            try:
+                with st.spinner("Running live check, this can take a minute or two..."):
+                    data = fetch_live_player(subset.iloc[choice]["Transfermarkt"], token)
+                transfer = latest_transfer(data)
+                details = data.get("playerDetails") or {}
+                rows = {
+                    "Current club": data.get("currentClub"),
+                    "On loan": loan_status(transfer),
+                    "Contract end": data.get("contractEnd"),
+                    "Joined current club": data.get("arrivalDate"),
+                    "Market value": data.get("marketValue"),
+                    "Agent": details.get("Player agent"),
+                    "Age": details.get("Age"),
+                }
+                st.table(pd.DataFrame({
+                    "Field": list(rows.keys()),
+                    "Value": [str(v) if v is not None else "-" for v in rows.values()],
+                }))
+                if transfer:
+                    st.caption(
+                        f"Latest transfer: {transfer.get('date')} | "
+                        f"{transfer.get('left')} -> {transfer.get('joined')} | "
+                        f"fee: {transfer.get('fee')}"
+                    )
+                with st.expander("Raw data"):
+                    st.json(data)
+            except Exception as e:
+                st.error(f"Live check failed: {e}")
