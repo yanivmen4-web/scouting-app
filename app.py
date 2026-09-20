@@ -1,4 +1,5 @@
 import io
+import re
 
 import pandas as pd
 import requests
@@ -63,6 +64,17 @@ def load_players(url):
     return df.reset_index(drop=True), file_modified, str(latest_season)
 
 
+@st.cache_data(ttl=3600)
+def fetch_live_club(profile_url):
+    res = requests.get(profile_url, headers=HEADERS, timeout=30)
+    if res.status_code != 200:
+        raise RuntimeError(f"Transfermarkt returned status {res.status_code}")
+    match = re.search(r'data-header__club.{0,400}?title="([^"]+)"', res.text, re.DOTALL)
+    if not match:
+        raise RuntimeError("Could not find the club on the profile page")
+    return match.group(1)
+
+
 try:
     df, file_modified, latest_season = load_players(data_url)
 except Exception as e:
@@ -105,4 +117,34 @@ column_config = {}
 if "Transfermarkt" in df.columns:
     column_config["Transfermarkt"] = st.column_config.LinkColumn("Transfermarkt", display_text="Open")
 
-st.dataframe(df, hide_index=True, use_container_width=True, column_config=column_config)
+try:
+    money_config = dict(column_config)
+    if "Market Value (€)" in df.columns:
+        money_config["Market Value (€)"] = st.column_config.NumberColumn(
+            "Market Value (€)", format="localized"
+        )
+    st.dataframe(df, hide_index=True, use_container_width=True, column_config=money_config)
+except Exception:
+    st.dataframe(df, hide_index=True, use_container_width=True, column_config=column_config)
+
+st.subheader("Live check")
+st.caption("Reads the current club directly from the player's Transfermarkt profile page.")
+
+if "Transfermarkt" in df.columns and len(df) > 0:
+    subset = df.head(50).reset_index(drop=True)
+    if len(df) > 50:
+        st.caption("Showing the first 50 players of the current filter. Narrow the search to find others.")
+    choice = st.selectbox(
+        "Player",
+        options=list(range(len(subset))),
+        format_func=lambda i: f"{subset.iloc[i]['Name']} - {subset.iloc[i].get('Club', '')}",
+    )
+    if st.button("Check live club"):
+        try:
+            live_club = fetch_live_club(subset.iloc[choice]["Transfermarkt"])
+            st.success(f"Live club per Transfermarkt: {live_club}")
+            file_club = subset.iloc[choice].get("Club", "")
+            if file_club and str(file_club) != live_club:
+                st.warning(f"The data file says: {file_club}")
+        except Exception as e:
+            st.error(f"Live check failed: {e}")
