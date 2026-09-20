@@ -244,18 +244,10 @@ SHOW = [
 ]
 display_df = df[[c for c in SHOW if c in df.columns]]
 
-show_links_as_text = st.checkbox("Show links as text (select a cell and press Ctrl+C to copy)")
-
-if show_links_as_text:
-    column_config = {
-        "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", width="large"),
-        "Club": st.column_config.LinkColumn("Club", width="large"),
-    }
-else:
-    column_config = {
-        "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
-        "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
-    }
+column_config = {
+    "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
+    "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
+}
 
 try:
     money_config = dict(column_config)
