@@ -44,7 +44,7 @@ with st.sidebar.expander("Data source"):
     transfers_url = st.text_input("Transfers file URL", value=BASE + "transfers.csv.gz")
 
 
-def download_csv(url):
+ download_csv(url):
     res = requests.get(url, headers=HEADERS, timeout=60)
     if res.status_code != 200:
         raise RuntimeError(f"Server returned status {res.status_code}")
@@ -54,7 +54,7 @@ def download_csv(url):
 
 
 @st.cache_data(ttl=3600)
-def load_latest_transfers(url):
+ load_latest_transfers(url):
     tr, _ = download_csv(url)
     tr["transfer_date"] = pd.to_datetime(tr["transfer_date"], errors="coerce")
     tr = tr.dropna(subset=["transfer_date"])
@@ -70,7 +70,7 @@ def load_latest_transfers(url):
     return out.reset_index(drop=True)
 
 
-def club_link(name, club_id):
+ club_link(name, club_id):
     if pd.isna(name):
         return None
     if pd.notna(club_id):
@@ -88,7 +88,7 @@ POS_CODES = {
     "Centre-Back": "CB",
     "Right-Back": "RB",
     "Left-Back": "LB",
-    "Defensive Midfield": "DMC",
+    "ensive Midfield": "DMC",
     "Central Midfield": "CM",
     "Attacking Midfield": "AMC",
     "Right Midfield": "RM",
@@ -103,7 +103,7 @@ COLUMNS["foot"] = "Foot"
 
 
 @st.cache_data(ttl=3600)
-def load_players(url):
+ load_players(url):
     raw, headers = download_csv(url)
     file_modified = headers.get("Last-Modified", "")
     if "last_season" in raw.columns:
@@ -194,24 +194,16 @@ selected_positions = st.sidebar.multiselect(
 )
 
 value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
-def parse_amount(text, default):
-    text = str(text).strip().lower().replace(",", "").replace("€", "").replace(" ", "")
-    factor = 1
-    if text.endswith("m"):
-        factor, text = 1_000_000, text[:-1]
-    elif text.endswith("k"):
-        factor, text = 1_000, text[:-1]
-    try:
-        return max(0, int(float(text) * factor))
-    except ValueError:
-        return default
-
+st.markdown(
+    "<style>[data-testid='stSidebar'] {min-width: 380px;}</style>",
+    unsafe_allow_html=True,
+)
 
 st.sidebar.write("Market value (€)")
-value_from = parse_amount(st.sidebar.text_input("From", value="0"), 0)
-value_to = parse_amount(st.sidebar.text_input("To", value=f"{value_cap:,}"), value_cap)
-st.sidebar.caption(f"Range: {value_from:,} - {value_to:,}")
-
+value_from = st.sidebar.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
+st.sidebar.caption(f"From: {value_from:,}")
+value_to = st.sidebar.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
+st.sidebar.caption(f"To: {value_to:,}")
 foot_choice = st.sidebar.radio("Foot", ["All", "R", "L"], horizontal=True)
 eu_choice = st.sidebar.radio("EU passport", ["All", "YES", "NO"], horizontal=True)
 israeli_choice = st.sidebar.radio("Israeli", ["All", "YES", "NO"], horizontal=True)
