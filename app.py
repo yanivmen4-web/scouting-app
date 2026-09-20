@@ -52,6 +52,9 @@ def load_players(url):
         df.insert(1, "Age", age.astype("Int64"))
     else:
         df.insert(1, "Age", pd.NA)
+    if "player_id" in raw.columns:
+        ids = raw["player_id"].astype("Int64").astype(str)
+        df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + ids
     if "Market Value (€)" in df.columns:
         df = df.sort_values("Market Value (€)", ascending=False, na_position="last")
     return df.reset_index(drop=True), file_modified, str(latest_season)
@@ -94,4 +97,9 @@ if "Market Value (€)" in df.columns:
         df = df[df["Market Value (€)"] >= min_value]
 
 st.write(f"Showing **{len(df)}** players:")
-st.dataframe(df, hide_index=True, use_container_width=True)
+
+column_config = {}
+if "Transfermarkt" in df.columns:
+    column_config["Transfermarkt"] = st.column_config.LinkColumn("Transfermarkt", display_text="Open")
+
+st.dataframe(df, hide_index=True, use_container_width=True, column_config=column_config)
