@@ -94,4 +94,3 @@ def load_latest_transfers(url):
     out = pd.DataFrame({
         "player_id": last["player_id"].astype("Int64"),
         "Latest Club": last["to_club_name"],
-        "Latest Club ID":
