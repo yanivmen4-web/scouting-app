@@ -63,3 +63,68 @@ def download_csv(url):
     content = res.content
     compression = "gzip" if content[:2] == b"\x1f\x8b" else None
     return pd.read_csv(io.BytesIO(content), compression=compression), res.headers
+
+
+
+
+SSA = {
+    "Angola": [], "Benin": [], "Botswana": [], "Burkina Faso": [], "Burundi": [],
+    "Cameroon": [], "Cape Verde": ["cabo verde"], "Central African Republic": [],
+    "Chad": [], "Comoros": [], "Congo": ["republic of the congo"],
+    "DR Congo": ["congo dr", "democratic republic of the congo"],
+    "Cote d'Ivoire": ["ivory coast", "c\u00f4te d'ivoire"], "Djibouti": [],
+    "Equatorial Guinea": [], "Eritrea": [], "Eswatini": ["swaziland"], "Ethiopia": [],
+    "Gabon": [], "Gambia": ["the gambia"], "Ghana": [], "Guinea": [],
+    "Guinea-Bissau": [], "Kenya": [], "Lesotho": [], "Liberia": [], "Madagascar": [],
+    "Malawi": [], "Mali": [], "Mauritania": [], "Mauritius": [], "Mozambique": [],
+    "Namibia": [], "Niger": [], "Nigeria": [], "Rwanda": [], "Sao Tome and Principe": [],
+    "Senegal": [], "Seychelles": [], "Sierra Leone": [], "Somalia": [],
+    "South Africa": [], "South Sudan": [], "Sudan": [], "Tanzania": [], "Togo": [],
+    "Uganda": [], "Zambia": [], "Zimbabwe": [],
+}
+SSA_LOOKUP = {}
+for _name, _aliases in SSA.items():
+    SSA_LOOKUP[_name.lower()] = _name
+    for _alias in _aliases:
+        SSA_LOOKUP[_alias] = _name
+
+
+def parse_value(text):
+    t = str(text).strip().lower().replace("€", "").replace(",", "")
+    mult = 1
+    if t.endswith("bn"):
+        mult, t = 1e9, t[:-2]
+    elif t.endswith("m"):
+        mult, t = 1e6, t[:-1]
+    elif t.endswith("k"):
+        mult, t = 1e3, t[:-1]
+    try:
+        return float(t) * mult
+    except ValueError:
+        return None
+
+
+def club_link(name, club_id):
+    if pd.isna(name):
+        return None
+    if pd.notna(club_id):
+        return f"https://www.transfermarkt.com/-/startseite/verein/{int(club_id)}#{name}"
+    search = "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query="
+    return f"{search}{quote(str(name))}#{name}"
+
+
+@st.cache_data(ttl=3600)
+def load_transfer_info(url):
+    tr, _ = download_csv(url)
+    tr["transfer_date"] = pd.to_datetime(tr["transfer_date"], errors="coerce")
+    tr = tr.dropna(subset=["transfer_date"])
+    tr = tr[tr["transfer_date"] <= pd.Timestamp.today()]
+    names = tr["from_club_name"].astype(str) + " | " + tr["to_club_name"].astype(str)
+    israel_ids = tr.loc[names.str.contains(ISRAEL_CLUBS), "player_id"].unique().tolist()
+    last = tr.sort_values("transfer_date").groupby("player_id").tail(1)
+    latest = pd.DataFrame({
+        "player_id": last["player_id"].astype("Int64"),
+        "Latest Club": last["to_club_name"],
+        "Latest Club ID": last["to_club_id"].astype("Int64"),
+    })
+    return latest.reset_index(drop=True), israel_ids
