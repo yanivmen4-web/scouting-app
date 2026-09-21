@@ -384,3 +384,60 @@ with st.expander("Apify data check"):
                 st.dataframe(apify_df.head(20), hide_index=True)
         except Exception as e:
             st.error(f"Could not load Apify data: {e}")
+
+
+
+
+with st.expander("Run batches on Apify"):
+    try:
+        run_token = st.secrets["APIFY_TOKEN"]
+    except Exception:
+        run_token = ""
+    if not run_token:
+        st.error("APIFY_TOKEN is missing from the app secrets")
+    else:
+        api_base = "https://api.apify.com/v2"
+        actor_id = "data_xplorer~transfermarkt-api-scraper"
+        auth_header = {"Authorization": f"Bearer {run_token}"}
+        number = st.number_input("Batch number", min_value=1, max_value=len(batches), value=2, step=1)
+        if st.button("Start this batch on Apify"):
+            payload = {"scrapeType": "clubs", "items": batches[int(number) - 1]}
+            resp = requests.post(
+                f"{api_base}/acts/{actor_id}/runs", json=payload, headers=auth_header, timeout=60
+            )
+            if resp.status_code in (200, 201):
+                st.success(f"Batch {int(number)} started (run {resp.json()['data']['id']})")
+            else:
+                st.error(f"Could not start batch: {resp.status_code} {resp.text[:300]}")
+        if st.button("Show recent runs"):
+            resp = requests.get(
+                f"{api_base}/acts/{actor_id}/runs",
+                params={"desc": "true", "limit": 25},
+                headers=auth_header,
+                timeout=60,
+            )
+            if resp.status_code == 200:
+                first_url = {b[0]: n for n, b in enumerate(batches, start=1) if b}
+                rows = []
+                for r in resp.json()["data"]["items"]:
+                    batch_no = ""
+                    try:
+                        rec = requests.get(
+                            f"{api_base}/key-value-stores/{r['defaultKeyValueStoreId']}/records/INPUT",
+                            headers=auth_header,
+                            timeout=30,
+                        )
+                        if rec.status_code == 200:
+                            items = rec.json().get("items") or []
+                            batch_no = first_url.get(items[0], "") if items else ""
+                    except Exception:
+                        pass
+                    rows.append({
+                        "Batch": batch_no,
+                        "Status": r.get("status"),
+                        "Started": r.get("startedAt"),
+                        "Finished": r.get("finishedAt"),
+                    })
+                st.dataframe(pd.DataFrame(rows), hide_index=True)
+            else:
+                st.error(f"Could not load recent runs: {resp.status_code} {resp.text[:300]}")
