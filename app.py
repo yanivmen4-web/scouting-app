@@ -384,3 +384,87 @@ df["Source"] = df["Live"].map({True: "Live (Apify)", False: "Open data"})
 df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
 df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 df = df.sort_values("Market Value (€)", ascending=False, na_position="last").reset_index(drop=True)
+
+
+
+live_dates = pd.to_datetime(df["Scraped"], errors="coerce", utc=True).dropna()
+if len(live_dates) > 0:
+    newest = live_dates.max()
+    days = (pd.Timestamp.now(tz="UTC") - newest).days
+    note = (
+        f"Live squads (Apify): {int(df['Live'].sum())} players, latest scrape "
+        f"{newest.strftime('%d %b %Y')} ({days} days ago). Other players show open data "
+        f"updated {pd.to_datetime(file_modified, utc=True, errors='coerce').strftime('%d %b %Y')}."
+    )
+    if days > 7:
+        st.warning(note + " Re-run the club batches to refresh.")
+    else:
+        st.success(note)
+else:
+    st.warning("No live data loaded, showing the open dataset only. Updated: " + str(file_modified))
+
+st.markdown(
+    "<style>[data-testid='stSidebar'][aria-expanded='true'] {min-width: 380px;}</style>",
+    unsafe_allow_html=True,
+)
+
+st.sidebar.header("Filter Players")
+
+search_name = st.sidebar.text_input("Search by name")
+search_club = st.sidebar.text_input("Search by club")
+
+ages = df["Age"].dropna()
+age_range = None
+if len(ages) > 0 and ages.min() < ages.max():
+    age_min, age_max = int(ages.min()), int(ages.max())
+    age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max))
+
+selected_positions = st.sidebar.multiselect(
+    "Position (empty = all)", list(POS_CODES.values())
+)
+
+value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
+st.sidebar.write("Market value (€)")
+value_from = st.sidebar.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
+st.sidebar.caption(f"From: {value_from:,}")
+value_to = st.sidebar.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
+st.sidebar.caption(f"To: {value_to:,}")
+
+foot_choice = st.sidebar.radio("Foot", ["All", "R", "L"], horizontal=True)
+eu_choice = st.sidebar.radio("EU passport", ["All", "YES", "NO"], horizontal=True)
+israeli_choice = st.sidebar.radio("Israeli", ["All", "YES", "NO"], horizontal=True)
+played_choice = st.sidebar.radio("Played in Israel", ["All", "YES", "NO"], horizontal=True)
+ssa_choice = st.sidebar.radio("Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True)
+ssa_countries = st.sidebar.multiselect("SSA countries (any of)", list(SSA.keys()))
+st.sidebar.caption(
+    "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
+    "from club names. SSA is by any citizenship or birth country."
+)
+
+mask = pd.Series(True, index=df.index)
+if search_name:
+    mask &= df["Name"].astype(str).str.contains(search_name, case=False, na=False, regex=False)
+if search_club:
+    mask &= df["Club Name"].astype(str).str.contains(search_club, case=False, na=False, regex=False)
+if age_range:
+    mask &= df["Age"].between(age_range[0], age_range[1]).fillna(False).astype(bool)
+if selected_positions:
+    mask &= df["Position"].isin(selected_positions)
+if foot_choice != "All":
+    mask &= df["Foot"].isin([foot_choice, "Both"])
+if value_from > 0 or value_to < value_cap:
+    mask &= df["Market Value (€)"].between(value_from, value_to).fillna(False)
+if eu_choice != "All":
+    mask &= df["EU"] == eu_choice
+if israeli_choice != "All":
+    mask &= df["Israeli"] == israeli_choice
+if played_choice != "All":
+    mask &= df["Played in Israel"] == played_choice
+if ssa_choice == "YES":
+    mask &= df["SSA"] != ""
+elif ssa_choice == "NO":
+    mask &= df["SSA"] == ""
+if ssa_countries:
+    mask &= df["SSA"].apply(lambda s: any(c in s.split(", ") for c in ssa_countries))
+
+df = df[mask]
