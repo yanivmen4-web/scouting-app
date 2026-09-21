@@ -468,3 +468,63 @@ if ssa_countries:
     mask &= df["SSA"].apply(lambda s: any(c in s.split(", ") for c in ssa_countries))
 
 df = df[mask]
+
+
+
+
+st.write(f"Showing **{len(df)}** players:")
+
+SHOW = [
+    "Name", "Transfermarkt", "Age", "Position", "Foot", "Club", "Source",
+    "Nationalities", "EU", "Israeli", "Played in Israel", "SSA",
+    "Market Value (€)", "Contract Expires", "Agent",
+]
+display_df = df[[c for c in SHOW if c in df.columns]]
+
+column_config = {
+    "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
+    "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
+}
+
+try:
+    money_config = dict(column_config)
+    money_config["Market Value (€)"] = st.column_config.NumberColumn(
+        "Market Value (€)", format="localized"
+    )
+    st.dataframe(display_df, hide_index=True, width="stretch", column_config=money_config)
+except Exception:
+    st.dataframe(display_df, hide_index=True, width="stretch", column_config=column_config)
+
+
+def make_export(frame):
+    try:
+        buffer = io.BytesIO()
+        frame.to_excel(buffer, index=False, sheet_name="Players")
+        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        return buffer.getvalue(), "players.xlsx", mime
+    except ImportError:
+        data = frame.to_csv(index=False).encode("utf-8-sig")
+        return data, "players.csv", "text/csv"
+
+
+st.subheader("Export")
+
+export_df = display_df.copy()
+export_df["Club"] = df["Club Name"]
+name_hash = pd.util.hash_pandas_object(export_df["Name"].astype(str), index=False).sum()
+signature = (len(export_df), int(name_hash))
+
+if st.button("Prepare Excel file"):
+    with st.spinner("Preparing file..."):
+        st.session_state["export"] = (signature, make_export(export_df))
+
+saved = st.session_state.get("export")
+if saved and saved[0] == signature:
+    file_bytes, file_name, file_mime = saved[1]
+    label = f"Download {file_name} ({len(export_df)} players)"
+    try:
+        st.download_button(label, data=file_bytes, file_name=file_name, mime=file_mime, on_click="ignore")
+    except TypeError:
+        st.download_button(label, data=file_bytes, file_name=file_name, mime=file_mime)
+elif saved:
+    st.caption("The filters changed since the file was prepared. Press Prepare Excel file again.")
