@@ -296,3 +296,91 @@ df["Source"] = df["Live"].map({True: "Live (Apify)", False: "Open data"})
 df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
 df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 df = df.sort_values("Market Value (€)", ascending=False, na_position="last").reset_index(drop=True)
+
+
+
+
+try:
+    with st.spinner("Loading players file..."):
+        base, file_modified = load_players(data_url)
+except Exception as e:
+    st.error(f"Could not load data: {e}")
+    st.stop()
+
+df = base.copy()
+df["Club Name"] = df["Club"]
+israel_ids = []
+
+try:
+    with st.spinner("Loading transfers file..."):
+        latest, israel_ids = load_transfer_info(transfers_url)
+    df = df.merge(latest, on="player_id", how="left")
+    has_latest = df["Latest Club"].notna()
+    df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
+    df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
+except Exception as e:
+    st.warning(f"Could not load transfers file: {e}")
+
+try:
+    apify_token = st.secrets["APIFY_TOKEN"]
+except Exception:
+    apify_token = ""
+
+apify_df = pd.DataFrame()
+if apify_token:
+    try:
+        with st.spinner("Loading live squads from Apify (the first load can take a few minutes)..."):
+            apify_df, apify_runs = load_apify_players(apify_token)
+    except Exception as e:
+        st.warning(f"Could not load Apify data: {e}")
+else:
+    st.warning("APIFY_TOKEN is missing, showing open data only")
+
+df["Live"] = False
+if not apify_df.empty:
+    apify_df["player_id"] = apify_df["player_id"].astype("Int64")
+    only = apify_df[~apify_df["player_id"].isin(df["player_id"])]
+    df = df.merge(apify_df, on="player_id", how="left")
+    df = pd.concat([df, only], ignore_index=True)
+    live = df["A_Club"].notna()
+    df["Live"] = live
+    df["Name"] = df["Name"].where(df["Name"].notna(), df["A_Name"])
+    df["Club ID"] = pd.to_numeric(df["Club ID"], errors="coerce").astype("Int64")
+    a_club_id = pd.to_numeric(df["A_ClubID"], errors="coerce").astype("Int64")
+    df["Club ID"] = a_club_id.where(live, df["Club ID"])
+    df["Club Name"] = df["A_Club"].where(live, df["Club Name"])
+    a_value = pd.to_numeric(df["A_Value"].map(parse_value), errors="coerce")
+    df["Market Value (€)"] = a_value.combine_first(df["Market Value (€)"])
+    a_contract = pd.to_datetime(df["A_Contract"], dayfirst=True, errors="coerce").dt.strftime("%Y-%m-%d")
+    df["Contract Expires"] = a_contract.where(a_contract.notna(), df["Contract Expires"])
+    a_age = pd.to_numeric(df["A_Age"], errors="coerce").astype("Int64")
+    df["Age"] = df["Age"].astype("Int64").where(df["Age"].notna(), a_age)
+    df["Position"] = df["Position"].where(df["Position"].notna(), df["A_Pos"].map(POS_CODES))
+
+for col in ("A_Nat", "Scraped"):
+    if col not in df.columns:
+        df[col] = pd.NA
+
+
+def to_list(nat, primary):
+    if isinstance(nat, str) and nat:
+        return [x.strip() for x in nat.split("|") if x.strip()]
+    return [primary] if isinstance(primary, str) and primary else []
+
+
+nats = [to_list(a, p) for a, p in zip(df["A_Nat"], df["Citizenship"])]
+lower = [[x.lower() for x in n] for n in nats]
+births = df["Birth Country"].fillna("").astype(str).str.strip().str.lower().tolist()
+df["Nationalities"] = [", ".join(n) for n in nats]
+df["EU"] = ["YES" if any(x in EU for x in l) or b in EU else "NO" for l, b in zip(lower, births)]
+df["Israeli"] = ["YES" if "israel" in l or b == "israel" else "NO" for l, b in zip(lower, births)]
+df["SSA"] = [
+    ", ".join(sorted({SSA_LOOKUP[x] for x in l + [b] if x in SSA_LOOKUP}))
+    for l, b in zip(lower, births)
+]
+played = df["player_id"].isin(set(israel_ids)) | df["Club Name"].astype(str).str.contains(ISRAEL_CLUBS)
+df["Played in Israel"] = played.map({True: "YES", False: "NO"})
+df["Source"] = df["Live"].map({True: "Live (Apify)", False: "Open data"})
+df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
+df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
+df = df.sort_values("Market Value (€)", ascending=False, na_position="last").reset_index(drop=True)
