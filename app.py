@@ -528,3 +528,60 @@ if saved and saved[0] == signature:
         st.download_button(label, data=file_bytes, file_name=file_name, mime=file_mime)
 elif saved:
     st.caption("The filters changed since the file was prepared. Press Prepare Excel file again.")
+
+
+
+API = "https://api.apify.com/v2"
+ACTOR = "data_xplorer~transfermarkt-api-scraper"
+AUTH = {"Authorization": f"Bearer {apify_token}"}
+
+ISRAEL_LEAGUES = [
+    "Hapoel Be'er Sheva", "Beitar Jerusalem", "Maccabi Tel Aviv", "Hapoel Tel Aviv",
+    "Maccabi Haifa", "Hapoel Petah Tikva", "Maccabi Netanya", "Bnei Sakhnin",
+    "Ironi Kiryat Shmona", "Hapoel Haifa", "Hapoel Katamon Jerusalem", "Ironi Tiberias",
+    "Maccabi Petah Tikva", "Hapoel Ramat Gan Givatayim", "FC Ashdod",
+    "Maccabi Bnei Reineh", "Maccabi Kiryat Gat", "Maccabi Akhi Nazareth",
+    "Bnei Yehuda Tel Aviv", "FC Kiryat Yam", "Maccabi Jaffa", "Hapoel Rishon LeZion",
+    "Hapoel Kfar Shalem", "FC Kafr Qasim", "Ironi Modi'in", "Hapoel Acre",
+]
+
+clubs = base.dropna(subset=["Club ID"]).drop_duplicates("Club ID")
+club_urls = [f"https://www.transfermarkt.com/-/startseite/verein/{int(i)}" for i in clubs["Club ID"]]
+club_batches = [club_urls[i:i + 100] for i in range(0, len(club_urls), 100)]
+
+
+def run_options():
+    opts = {}
+    try:
+        info = requests.get(f"{API}/acts/{ACTOR}", headers=AUTH, timeout=30).json()["data"]
+        defaults = info.get("defaultRunOptions") or {}
+        opts = {k: defaults[k] for k in ("build", "timeoutSecs", "memoryMbytes") if k in defaults}
+    except Exception:
+        pass
+    opts["maxTotalChargeUsd"] = 1
+    return opts
+
+
+st.subheader("Admin: Apify updates")
+
+with st.expander("Refresh and manual runs"):
+    if not apify_token:
+        st.error("APIFY_TOKEN is missing from the app secrets")
+    else:
+        if st.button("Refresh app data now"):
+            st.cache_data.clear()
+            st.rerun()
+        st.caption("Reloads the newest Apify results into the table (also happens automatically every 6 hours).")
+        club_text = st.text_area("Clubs to scrape now (one per line)", value="\n".join(ISRAEL_LEAGUES), height=200)
+        if st.button("Scrape these clubs now"):
+            items = [line.strip() for line in club_text.splitlines() if line.strip()]
+            resp = requests.post(
+                f"{API}/acts/{ACTOR}/runs",
+                json={"scrapeType": "clubs", "items": items},
+                headers=AUTH,
+                timeout=60,
+            )
+            if resp.status_code in (200, 201):
+                st.success(f"Started ({len(items)} clubs). It takes a few minutes, then press Refresh app data now.")
+            else:
+                st.error(f"Could not start: {resp.status_code} {resp.text[:300]}")
