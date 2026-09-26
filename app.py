@@ -255,7 +255,11 @@ if not apify_df.empty:
     only = apify_df[~apify_df["player_id"].isin(df["player_id"])]
     df = df.merge(apify_df, on="player_id", how="left")
     df = pd.concat([df, only], ignore_index=True)
-    live = df["A_Club"].notna()
+    scraped_dt = pd.to_datetime(df["Scraped"], errors="coerce", utc=True).dt.tz_localize(None)
+    transfer_dt = pd.to_datetime(df.get("Latest Transfer Date"), errors="coerce")
+    has_transfer = transfer_dt.notna()
+    apify_newer = scraped_dt >= transfer_dt
+    live = df["A_Club"].notna() & (~has_transfer | apify_newer)
     df["Live"] = live
     df["Name"] = df["Name"].where(df["Name"].notna(), df["A_Name"])
     df["Club ID"] = pd.to_numeric(df["Club ID"], errors="coerce").astype("Int64")
