@@ -122,7 +122,7 @@ def load_transfer_info(url):
     names = tr["from_club_name"].astype(str) + " | " + tr["to_club_name"].astype(str)
     israel_ids = tr.loc[names.str.contains(ISRAEL_CLUBS), "player_id"].unique().tolist()
     last = tr.sort_values("transfer_date").groupby("player_id").tail(1)
-        latest = pd.DataFrame({
+    latest = pd.DataFrame({
         "player_id": last["player_id"].astype("Int64"),
         "Latest Club": last["to_club_name"],
         "Latest Club ID": last["to_club_id"].astype("Int64"),
