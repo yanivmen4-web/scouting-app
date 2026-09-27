@@ -504,3 +504,35 @@ with st.expander("Refresh and manual runs"):
                 st.success(f"Started ({len(items)} clubs). It takes a few minutes, then press Refresh app data now.")
             else:
                 st.error(f"Could not start: {resp.status_code} {resp.text[:300]}")
+        st.divider()
+        if st.button("Show all Apify runs (debug)"):
+            runs_resp = requests.get(
+                f"{API}/acts/{ACTOR}/runs",
+                params={"limit": 100, "desc": "true"},
+                headers=AUTH,
+                timeout=60,
+            )
+            if runs_resp.status_code == 200:
+                runs = runs_resp.json()["data"]["items"]
+                rows = []
+                for run in runs:
+                    store_id = run.get("defaultKeyValueStoreId")
+                    clubs = []
+                    if store_id:
+                        input_resp = requests.get(
+                            f"{API}/key-value-stores/{store_id}/records/INPUT",
+                            headers=AUTH,
+                            timeout=30,
+                        )
+                        if input_resp.status_code == 200:
+                            clubs = input_resp.json().get("items", [])
+                    rows.append({
+                        "Started": run.get("startedAt"),
+                        "Finished": run.get("finishedAt"),
+                        "Status": run.get("status"),
+                        "Clubs count": len(clubs),
+                        "Clubs": ", ".join(clubs),
+                    })
+                st.dataframe(rows)
+            else:
+                st.error(f"Could not list runs: {runs_resp.status_code} {runs_resp.text[:300]}")
