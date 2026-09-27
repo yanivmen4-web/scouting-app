@@ -492,6 +492,22 @@ def run_options():
     return opts
 
 
+def run_debug_competition_test():
+    st.divider()
+    test_league = st.text_input("Test league name (debug)", value="https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CRI1")
+    if st.button("Test competition scrape (debug)"):
+        resp = requests.post(
+            f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
+            json={"scrapeType": "transfersCompetition", "items": [test_league]},
+            headers=AUTH,
+            timeout=120,
+        )
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            st.write(f"Items returned: {len(data)}")
+            st.json(data)
+        else:
+            st.error(f"Failed: {resp.status_code} {resp.text[:500]}")
 st.subheader("Admin: Apify updates")
 
 with st.expander("Refresh and manual runs"):
@@ -502,6 +518,7 @@ with st.expander("Refresh and manual runs"):
             st.cache_data.clear()
             st.rerun()
         st.caption("Reloads the newest Apify results into the table (also happens automatically every 6 hours).")
+        run_debug_competition_test()
         club_text = st.text_area("Clubs to scrape now (one per line)", value="\n".join(ISRAEL_LEAGUES), height=200)
         if st.button("Scrape these clubs now"):
             items = [line.strip() for line in club_text.splitlines() if line.strip()]
