@@ -1,3 +1,4 @@
+import time
 import io
 import json
 import re
@@ -507,7 +508,7 @@ def run_debug_competition_test():
         ("Turkey", "Super Lig", "https://www.transfermarkt.com/super-lig/startseite/wettbewerb/TR1"),
         ("Turkey", "1.Lig", "https://www.transfermarkt.com/1-lig/startseite/wettbewerb/TR2"),
         ("Greece", "Super League 1", "https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1"),
-        ("Greece", "Super League 2", "https://www.transfermarkt.com/super-league-2/startseite/wettbewerb/GR2"),
+        ("Greece", "Super League 2", "https://www.transfermarkt.com/super-league-2-north/startseite/wettbewerb/GR22"),
         ("Italy", "Serie A", "https://www.transfermarkt.com/serie-a/startseite/wettbewerb/IT1"),
         ("Italy", "Serie B", "https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2"),
         ("Sweden", "Allsvenskan", "https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1"),
@@ -531,26 +532,50 @@ def run_debug_competition_test():
 
     if st.button("Test all target leagues (debug)"):
         results = []
+        club_ids_by_league = {}
         progress = st.progress(0)
         for i, (country, league, url) in enumerate(TARGET_LEAGUES):
-            try:
-                resp = requests.post(
-                    f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
-                    json={"scrapeType": "transfersCompetition", "items": [url]},
-                    headers=AUTH,
-                    timeout=120,
-                )
+            status = None
+            for attempt in range(3):
+                try:
+                    resp = requests.post(
+                        f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
+                        json={"scrapeType": "transfersCompetition", "items": [url]},
+                        headers=AUTH,
+                        timeout=120,
+                    )
+                except Exception as e:
+                    status = f"Error: {e}"
+                    break
                 if resp.status_code in (200, 201):
                     data = resp.json()
-                    total = data[0].get("totalClubs", 0) if data else 0
-                    results.append({"Country": country, "League": league, "Status": "OK", "Clubs": total})
+                    clubs = data[0].get("clubs", []) if data else []
+                    ids = []
+                    for c in clubs:
+                        m = re.search(r"/verein/(\d+)", str(c.get("clubUrl", "")))
+                        if m:
+                            ids.append(int(m.group(1)))
+                    club_ids_by_league[(country, league)] = ids
+                    status = "OK"
+                    break
+                elif resp.status_code == 403:
+                    status = "HTTP 403"
+                    time.sleep(5 * (attempt + 1))
+                    continue
                 else:
-                    results.append({"Country": country, "League": league, "Status": f"HTTP {resp.status_code}", "Clubs": 0})
-            except Exception as e:
-                results.append({"Country": country, "League": league, "Status": f"Error: {e}", "Clubs": 0})
+                    status = f"HTTP {resp.status_code}"
+                    break
+            results.append({
+                "Country": country, "League": league, "Status": status,
+                "Clubs": len(club_ids_by_league.get((country, league), [])),
+            })
+            time.sleep(2)
             progress.progress((i + 1) / len(TARGET_LEAGUES))
+        all_ids = sorted({cid for ids in club_ids_by_league.values() for cid in ids})
+        st.session_state["priority_club_ids"] = all_ids
         st.dataframe(results)
         st.write(f"Total clubs across working leagues: {sum(r['Clubs'] for r in results)}")
+        st.write(f"Unique club IDs collected: {len(all_ids)}")
 
 
 st.subheader("Admin: Apify updates")
