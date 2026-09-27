@@ -489,23 +489,68 @@ def run_options():
 
 def run_debug_competition_test():
     st.divider()
-    test_league = st.text_input(
-        "Test league name (debug)",
-        value="https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2/saison_id/2024",
-    )
-    if st.button("Test competition scrape (debug)"):
-        resp = requests.post(
-            f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
-            json={"scrapeType": "transfersCompetition", "items": [test_league]},
-            headers=AUTH,
-            timeout=120,
-        )
-        if resp.status_code in (200, 201):
-            data = resp.json()
-            st.write(f"Items returned: {len(data)}")
-            st.json(data)
-        else:
-            st.error(f"Failed: {resp.status_code} {resp.text[:500]}")
+    st.write("Testing all target leagues:")
+
+    TARGET_LEAGUES = [
+        ("Spain", "LaLiga", "https://www.transfermarkt.com/laliga/startseite/wettbewerb/ES1"),
+        ("Spain", "LaLiga2", "https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2"),
+        ("Germany", "Bundesliga", "https://www.transfermarkt.com/bundesliga/startseite/wettbewerb/L1"),
+        ("Germany", "2. Bundesliga", "https://www.transfermarkt.com/2-bundesliga/startseite/wettbewerb/L2"),
+        ("France", "Ligue 1", "https://www.transfermarkt.com/ligue-1/startseite/wettbewerb/FR1"),
+        ("France", "Ligue 2", "https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2"),
+        ("Portugal", "Liga Portugal", "https://www.transfermarkt.com/liga-nos/startseite/wettbewerb/PO1"),
+        ("Portugal", "Liga Portugal 2", "https://www.transfermarkt.com/liga-portugal-2/startseite/wettbewerb/PO2"),
+        ("Netherlands", "Eredivisie", "https://www.transfermarkt.com/eredivisie/startseite/wettbewerb/NL1"),
+        ("Netherlands", "Keuken Kampioen Divisie", "https://www.transfermarkt.com/keuken-kampioen-divisie/startseite/wettbewerb/NL2"),
+        ("Belgium", "Jupiler Pro League", "https://www.transfermarkt.com/jupiler-pro-league/startseite/wettbewerb/BE1"),
+        ("Belgium", "Challenger Pro League", "https://www.transfermarkt.com/challenger-pro-league/startseite/wettbewerb/BE2"),
+        ("Turkey", "Super Lig", "https://www.transfermarkt.com/super-lig/startseite/wettbewerb/TR1"),
+        ("Turkey", "1.Lig", "https://www.transfermarkt.com/1-lig/startseite/wettbewerb/TR2"),
+        ("Greece", "Super League 1", "https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1"),
+        ("Greece", "Super League 2", "https://www.transfermarkt.com/super-league-2/startseite/wettbewerb/GR2"),
+        ("Italy", "Serie A", "https://www.transfermarkt.com/serie-a/startseite/wettbewerb/IT1"),
+        ("Italy", "Serie B", "https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2"),
+        ("Sweden", "Allsvenskan", "https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1"),
+        ("Norway", "Eliteserien", "https://www.transfermarkt.com/eliteserien/startseite/wettbewerb/NO1"),
+        ("Denmark", "Superliga", "https://www.transfermarkt.com/superliga/startseite/wettbewerb/DK1"),
+        ("Finland", "Veikkausliiga", "https://www.transfermarkt.com/veikkausliiga/startseite/wettbewerb/FI1"),
+        ("Morocco", "Botola Pro", "https://www.transfermarkt.com/botola-pro/startseite/wettbewerb/MAR1"),
+        ("Egypt", "Egyptian Premier League", "https://www.transfermarkt.com/egyptian-premier-league/startseite/wettbewerb/EGY1"),
+        ("Tunisia", "Ligue Professionnelle 1", "https://www.transfermarkt.com/ligue-professionnelle-1/startseite/wettbewerb/TUN1"),
+        ("Algeria", "Ligue Professionnelle 1", "https://www.transfermarkt.com/ligue-professionnelle-1/startseite/wettbewerb/ALG1"),
+        ("South Africa", "Premiership", "https://www.transfermarkt.com/dstv-premiership/startseite/wettbewerb/SFA1"),
+        ("Brazil", "Serie A", "https://www.transfermarkt.com/campeonato-brasileiro-serie-a/startseite/wettbewerb/BRA1"),
+        ("Argentina", "Liga Profesional", "https://www.transfermarkt.com/liga-profesional-de-futbol/startseite/wettbewerb/AR1N"),
+        ("Colombia", "Liga Dimayor I", "https://www.transfermarkt.com/liga-dimayor-i/startseite/wettbewerb/COLP"),
+        ("Chile", "Primera Division", "https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CLPD"),
+        ("Venezuela", "Liga FUTVE", "https://www.transfermarkt.com/liga-futve/startseite/wettbewerb/VEN1"),
+        ("Ecuador", "LigaPro Serie A", "https://www.transfermarkt.com/ligapro-serie-a/startseite/wettbewerb/EL1A"),
+        ("Bolivia", "Division Profesional", "https://www.transfermarkt.com/division-profesional/startseite/wettbewerb/BOL1"),
+        ("Costa Rica", "Primera Division", "https://www.transfermarkt.com/primera-division-clausura/startseite/wettbewerb/CRPD"),
+    ]
+
+    if st.button("Test all target leagues (debug)"):
+        results = []
+        progress = st.progress(0)
+        for i, (country, league, url) in enumerate(TARGET_LEAGUES):
+            try:
+                resp = requests.post(
+                    f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
+                    json={"scrapeType": "transfersCompetition", "items": [url]},
+                    headers=AUTH,
+                    timeout=120,
+                )
+                if resp.status_code in (200, 201):
+                    data = resp.json()
+                    total = data[0].get("totalClubs", 0) if data else 0
+                    results.append({"Country": country, "League": league, "Status": "OK", "Clubs": total})
+                else:
+                    results.append({"Country": country, "League": league, "Status": f"HTTP {resp.status_code}", "Clubs": 0})
+            except Exception as e:
+                results.append({"Country": country, "League": league, "Status": f"Error: {e}", "Clubs": 0})
+            progress.progress((i + 1) / len(TARGET_LEAGUES))
+        st.dataframe(results)
+        st.write(f"Total clubs across working leagues: {sum(r['Clubs'] for r in results)}")
 
 
 st.subheader("Admin: Apify updates")
