@@ -516,6 +516,19 @@ with st.expander("Refresh and manual runs"):
             else:
                 st.error(f"Could not start: {resp.status_code} {resp.text[:300]}")
         st.divider()
+        st.divider()
+test_league = st.text_input("Test league name (debug)", value="Costa Rican Primera Division")
+if st.button("Test competition scrape (debug)"):
+    resp = requests.post(
+        f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
+        json={"scrapeType": "transfersCompetition", "items": [test_league]},
+        headers=AUTH,
+        timeout=120,
+    )
+    if resp.status_code == 200:
+        st.json(resp.json())
+    else:
+        st.error(f"Failed: {resp.status_code} {resp.text[:500]}")
         if st.button("Show all Apify runs (debug)"):
             runs_resp = requests.get(
                 f"{API}/acts/{ACTOR}/runs",
