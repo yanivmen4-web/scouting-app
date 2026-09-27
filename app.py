@@ -515,9 +515,8 @@ with st.expander("Refresh and manual runs"):
                 st.success(f"Started ({len(items)} clubs). It takes a few minutes, then press Refresh app data now.")
             else:
                 st.error(f"Could not start: {resp.status_code} {resp.text[:300]}")
-        st.divider()
-        st.divider()
-test_league = st.text_input("Test league name (debug)", value="Costa Rican Primera Division")
+     st.divider()
+test_league = st.text_input("Test league name (debug)", value="https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CRI1")
 if st.button("Test competition scrape (debug)"):
     resp = requests.post(
         f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
@@ -525,8 +524,10 @@ if st.button("Test competition scrape (debug)"):
         headers=AUTH,
         timeout=120,
     )
-    if resp.status_code == 200:
-        st.json(resp.json())
+    if resp.status_code in (200, 201):
+        data = resp.json()
+        st.write(f"Items returned: {len(data)}")
+        st.json(data)
     else:
         st.error(f"Failed: {resp.status_code} {resp.text[:500]}")
         if st.button("Show all Apify runs (debug)"):
