@@ -328,6 +328,11 @@ st.markdown(
 with st.expander("Debug: raw data columns"):
     raw_debug, _ = download_csv(data_url)
     st.write("Columns:", raw_debug.columns.tolist())
+    codes = sorted(raw_debug["current_club_domestic_competition_id"].dropna().unique().tolist())
+    st.write(f"Total competition codes: {len(codes)}")
+    st.write(codes)
+    raw_debug, _ = download_csv(data_url)
+    st.write("Columns:", raw_debug.columns.tolist())
     for col in raw_debug.columns:
         if "competition" in col.lower() or "country" in col.lower() or "league" in col.lower() or "domestic" in col.lower():
             st.write(f"**{col}** sample values:", raw_debug[col].dropna().unique()[:15])
