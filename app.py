@@ -331,11 +331,6 @@ with st.expander("Debug: raw data columns"):
     codes = sorted(raw_debug["current_club_domestic_competition_id"].dropna().unique().tolist())
     st.write(f"Total competition codes: {len(codes)}")
     st.write(codes)
-    raw_debug, _ = download_csv(data_url)
-    st.write("Columns:", raw_debug.columns.tolist())
-    for col in raw_debug.columns:
-        if "competition" in col.lower() or "country" in col.lower() or "league" in col.lower() or "domestic" in col.lower():
-            st.write(f"**{col}** sample values:", raw_debug[col].dropna().unique()[:15])
 
 st.sidebar.header("Filter Players")
 
@@ -494,7 +489,10 @@ def run_options():
 
 def run_debug_competition_test():
     st.divider()
-    test_league = st.text_input("Test league name (debug)", value="https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CRI1")
+    test_league = st.text_input(
+        "Test league name (debug)",
+        value="https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CRI1",
+    )
     if st.button("Test competition scrape (debug)"):
         resp = requests.post(
             f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
@@ -508,6 +506,8 @@ def run_debug_competition_test():
             st.json(data)
         else:
             st.error(f"Failed: {resp.status_code} {resp.text[:500]}")
+
+
 st.subheader("Admin: Apify updates")
 
 with st.expander("Refresh and manual runs"):
@@ -532,21 +532,7 @@ with st.expander("Refresh and manual runs"):
                 st.success(f"Started ({len(items)} clubs). It takes a few minutes, then press Refresh app data now.")
             else:
                 st.error(f"Could not start: {resp.status_code} {resp.text[:300]}")
-     st.divider()
-test_league = st.text_input("Test league name (debug)", value="https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CRI1")
-if st.button("Test competition scrape (debug)"):
-    resp = requests.post(
-        f"{API}/acts/{ACTOR}/run-sync-get-dataset-items",
-        json={"scrapeType": "transfersCompetition", "items": [test_league]},
-        headers=AUTH,
-        timeout=120,
-    )
-    if resp.status_code in (200, 201):
-        data = resp.json()
-        st.write(f"Items returned: {len(data)}")
-        st.json(data)
-    else:
-        st.error(f"Failed: {resp.status_code} {resp.text[:500]}")
+        st.divider()
         if st.button("Show all Apify runs (debug)"):
             runs_resp = requests.get(
                 f"{API}/acts/{ACTOR}/runs",
