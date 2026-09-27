@@ -520,7 +520,7 @@ def run_debug_competition_test():
         ("Algeria", "Ligue Professionnelle 1", "https://www.transfermarkt.com/ligue-professionnelle-1/startseite/wettbewerb/ALG1"),
         ("South Africa", "Premiership", "https://www.transfermarkt.com/dstv-premiership/startseite/wettbewerb/SFA1"),
         ("Brazil", "Serie A", "https://www.transfermarkt.com/campeonato-brasileiro-serie-a/startseite/wettbewerb/BRA1"),
-        ("Argentina", "Liga Profesional", "https://www.transfermarkt.com/liga-profesional-de-futbol/startseite/wettbewerb/AR1N"),
+        ("Argentina", "Liga Profesional", "https://www.transfermarkt.com/liga-profesional-argentina/startseite/wettbewerb/AR1N"),
         ("Colombia", "Liga Dimayor I", "https://www.transfermarkt.com/liga-dimayor-i/startseite/wettbewerb/COLP"),
         ("Chile", "Primera Division", "https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CLPD"),
         ("Venezuela", "Liga FUTVE", "https://www.transfermarkt.com/liga-futve/startseite/wettbewerb/VEN1"),
