@@ -491,7 +491,7 @@ def run_debug_competition_test():
     st.divider()
     test_league = st.text_input(
         "Test league name (debug)",
-        value="https://www.transfermarkt.com/primera-division/startseite/wettbewerb/CRI1/saison_id/2024",
+        value="https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2/saison_id/2024",
     )
     if st.button("Test competition scrape (debug)"):
         resp = requests.post(
