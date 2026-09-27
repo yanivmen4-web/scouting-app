@@ -325,6 +325,12 @@ st.markdown(
     "<style>[data-testid='stSidebar'][aria-expanded='true'] {min-width: 380px;}</style>",
     unsafe_allow_html=True,
 )
+with st.expander("Debug: raw data columns"):
+    raw_debug, _ = download_csv(data_url)
+    st.write("Columns:", raw_debug.columns.tolist())
+    for col in raw_debug.columns:
+        if "competition" in col.lower() or "country" in col.lower() or "league" in col.lower() or "domestic" in col.lower():
+            st.write(f"**{col}** sample values:", raw_debug[col].dropna().unique()[:15])
 
 st.sidebar.header("Filter Players")
 
