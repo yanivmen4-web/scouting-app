@@ -158,6 +158,7 @@ def load_apify_players(token):
             headers=auth,
             timeout=120,
         )
+        if run in runs[:3]: st.write("DEBUG dataset:", run["id"], got.status_code, got.text[:300])
         if got.status_code != 200:
             continue
         data = got.json()
