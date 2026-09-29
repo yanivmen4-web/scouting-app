@@ -410,6 +410,8 @@ if israeli_choice != "All":
     mask &= df["Israeli"] == israeli_choice
 if played_choice != "All":
     mask &= df["Played in Israel"] == played_choice
+if without_choice != "All":
+    mask &= df["Without Club"] == without_choice
 if ssa_choice == "YES":
     mask &= df["SSA"] != ""
 elif ssa_choice == "NO":
