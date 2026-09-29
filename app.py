@@ -451,19 +451,19 @@ without_choice = st.sidebar.radio(
     "Without Club", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_without"), label_visibility="collapsed",
 )
-filter_header("Sub-Saharan Africa", "f_ssa")
+filter_header("African", "f_ssa")
 ssa_choice = st.sidebar.radio(
-    "Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True,
+    "African", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_ssa"), label_visibility="collapsed",
 )
-filter_header("SSA countries (any of)", "f_ssa_countries")
+filter_header("African countries (any of)", "f_ssa_countries")
 ssa_countries = st.sidebar.multiselect(
-    "SSA countries (any of)", list(SSA.keys()),
+    "African countries (any of)", list(SSA.keys()),
     key=wkey("f_ssa_countries"), label_visibility="collapsed",
 )
 st.sidebar.caption(
     "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
-    "from club names. SSA is by any citizenship or birth country."
+    "from club names. African = a sub-Saharan country by any citizenship or birth country"
 )
 
 ALL_FILTER_KEYS = (
@@ -508,13 +508,13 @@ eu_choice = with_reset("f_eu").radio("EU passport", ["All", "YES", "NO"], horizo
 israeli_choice = with_reset("f_israeli").radio("Israeli", ["All", "YES", "NO"], horizontal=True, key="f_israeli")
 played_choice = with_reset("f_played").radio("Played in Israel", ["All", "YES", "NO"], horizontal=True, key="f_played")
 without_choice = with_reset("f_without").radio("Without Club", ["All", "YES", "NO"], horizontal=True, key="f_without")
-ssa_choice = with_reset("f_ssa").radio("Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True, key="f_ssa")
+ssa_choice = with_reset("f_ssa").radio("African", ["All", "YES", "NO"], horizontal=True, key="f_ssa")
 ssa_countries = with_reset("f_ssa_countries").multiselect(
-    "SSA countries (any of)", list(SSA.keys()), key="f_ssa_countries"
+    "African countries (any of)", list(SSA.keys()), key="f_ssa_countries"
 )
 st.sidebar.caption(
     "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
-    "from club names. SSA is by any citizenship or birth country."
+    "from club names. African = a sub-Saharan country by any citizenship or birth country"
 )
 
 mask = pd.Series(True, index=df.index)
