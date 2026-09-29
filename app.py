@@ -435,8 +435,10 @@ display_df = df[[c for c in SHOW if c in df.columns]]
 column_config = {
     "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
     "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
+    "Season Minutes": st.column_config.NumberColumn("Minutes 25/26 (incl. national team)", format="localized"),
+    "Season Goals": st.column_config.NumberColumn("Goals 25/26 (incl. national team)"),
+    "Season Assists": st.column_config.NumberColumn("Assists 25/26 (incl. national team)"),
 }
-
 try:
     money_config = dict(column_config)
     money_config["Market Value (€)"] = st.column_config.NumberColumn(
