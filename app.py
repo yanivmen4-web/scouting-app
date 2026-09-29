@@ -426,7 +426,8 @@ st.write(f"Showing **{len(df)}** players:")
 SHOW = [
     "Name", "Transfermarkt", "Age", "Position", "Foot", "Club", "Source",
     "Nationalities", "EU", "Israeli", "Played in Israel", "SSA",
-    "Market Value (€)", "Contract Expires", "Agent",
+    "Market Value (€)", "Season Minutes", "Season Goals", "Season Assists",
+    "Contract Expires", "Agent",
     "Scraped", "Latest Transfer Date",
 ]
 display_df = df[[c for c in SHOW if c in df.columns]]
