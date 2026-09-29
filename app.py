@@ -357,7 +357,114 @@ with st.expander("Debug: raw data columns"):
     st.write(f"Total competition codes: {len(codes)}")
     st.write(codes)
 
-def clear_filters(*keys):
+def ver(name):
+    return st.session_state.get("v_" + name, 0)
+
+
+def wkey(name):
+    return f"{name}_{ver(name)}"
+
+
+def bump(*names):
+    for n in names:
+        st.session_state["v_" + n] = ver(n) + 1
+
+
+ALL_FILTERS = (
+    "f_name", "f_club", "f_age", "f_pos", "f_value", "f_foot",
+    "f_eu", "f_israeli", "f_played", "f_without", "f_ssa", "f_ssa_countries",
+)
+
+
+def filter_header(label, *names):
+    left, right = st.sidebar.columns([6, 1], vertical_alignment="center")
+    left.write(label)
+    right.button(
+        ":material/close:", key="x_" + names[0], on_click=bump, args=names,
+        type="tertiary", help="Reset this filter",
+    )
+
+
+st.sidebar.header("Filter Players")
+st.sidebar.button("Reset all filters", key="x_all", on_click=bump, args=ALL_FILTERS)
+
+filter_header("Search by name", "f_name")
+search_name = st.sidebar.text_input(
+    "Search by name", key=wkey("f_name"), label_visibility="collapsed"
+)
+filter_header("Search by club", "f_club")
+search_club = st.sidebar.text_input(
+    "Search by club", key=wkey("f_club"), label_visibility="collapsed"
+)
+
+ages = df["Age"].dropna()
+age_range = None
+if len(ages) > 0 and ages.min() < ages.max():
+    age_min, age_max = int(ages.min()), int(ages.max())
+    filter_header("Age Range", "f_age")
+    age_range = st.sidebar.slider(
+        "Age Range", age_min, age_max, (age_min, age_max),
+        key=wkey("f_age"), label_visibility="collapsed",
+    )
+
+filter_header("Position (empty = all)", "f_pos")
+selected_positions = st.sidebar.multiselect(
+    "Position (empty = all)", list(POS_CODES.values()),
+    key=wkey("f_pos"), label_visibility="collapsed",
+)
+
+value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
+filter_header("Market value (€)", "f_value")
+value_from = st.sidebar.number_input(
+    "From", min_value=0, max_value=value_cap, value=0, step=100000,
+    key=wkey("f_value") + "_from",
+)
+st.sidebar.caption(f"From: {value_from:,}")
+value_to = st.sidebar.number_input(
+    "To", min_value=0, max_value=value_cap, value=value_cap, step=100000,
+    key=wkey("f_value") + "_to",
+)
+st.sidebar.caption(f"To: {value_to:,}")
+
+filter_header("Foot", "f_foot")
+foot_choice = st.sidebar.radio(
+    "Foot", ["All", "R", "L"], horizontal=True,
+    key=wkey("f_foot"), label_visibility="collapsed",
+)
+filter_header("EU passport", "f_eu")
+eu_choice = st.sidebar.radio(
+    "EU passport", ["All", "YES", "NO"], horizontal=True,
+    key=wkey("f_eu"), label_visibility="collapsed",
+)
+filter_header("Israeli", "f_israeli")
+israeli_choice = st.sidebar.radio(
+    "Israeli", ["All", "YES", "NO"], horizontal=True,
+    key=wkey("f_israeli"), label_visibility="collapsed",
+)
+filter_header("Played in Israel", "f_played")
+played_choice = st.sidebar.radio(
+    "Played in Israel", ["All", "YES", "NO"], horizontal=True,
+    key=wkey("f_played"), label_visibility="collapsed",
+)
+filter_header("Without Club", "f_without")
+without_choice = st.sidebar.radio(
+    "Without Club", ["All", "YES", "NO"], horizontal=True,
+    key=wkey("f_without"), label_visibility="collapsed",
+)
+filter_header("Sub-Saharan Africa", "f_ssa")
+ssa_choice = st.sidebar.radio(
+    "Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True,
+    key=wkey("f_ssa"), label_visibility="collapsed",
+)
+filter_header("SSA countries (any of)", "f_ssa_countries")
+ssa_countries = st.sidebar.multiselect(
+    "SSA countries (any of)", list(SSA.keys()),
+    key=wkey("f_ssa_countries"), label_visibility="collapsed",
+)
+st.sidebar.caption(
+    "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
+    "from club names. SSA is by any citizenship or birth country."
+)
     for k in keys:
         st.session_state.pop(k, None)
 
