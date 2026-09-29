@@ -383,6 +383,7 @@ foot_choice = st.sidebar.radio("Foot", ["All", "R", "L"], horizontal=True)
 eu_choice = st.sidebar.radio("EU passport", ["All", "YES", "NO"], horizontal=True)
 israeli_choice = st.sidebar.radio("Israeli", ["All", "YES", "NO"], horizontal=True)
 played_choice = st.sidebar.radio("Played in Israel", ["All", "YES", "NO"], horizontal=True)
+without_choice = st.sidebar.radio("Without Club", ["All", "YES", "NO"], horizontal=True)
 ssa_choice = st.sidebar.radio("Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True)
 ssa_countries = st.sidebar.multiselect("SSA countries (any of)", list(SSA.keys()))
 st.sidebar.caption(
