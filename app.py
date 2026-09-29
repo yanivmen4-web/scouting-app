@@ -465,9 +465,6 @@ st.sidebar.caption(
     "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
     "from club names. SSA is by any citizenship or birth country."
 )
-    for k in keys:
-        st.session_state.pop(k, None)
-
 
 ALL_FILTER_KEYS = (
     "f_name", "f_club", "f_age", "f_pos", "f_from", "f_to", "f_foot",
