@@ -357,35 +357,57 @@ with st.expander("Debug: raw data columns"):
     st.write(f"Total competition codes: {len(codes)}")
     st.write(codes)
 
-st.sidebar.header("Filter Players")
+def clear_filters(*keys):
+    for k in keys:
+        st.session_state.pop(k, None)
 
-search_name = st.sidebar.text_input("Search by name")
-search_club = st.sidebar.text_input("Search by club")
+
+ALL_FILTER_KEYS = (
+    "f_name", "f_club", "f_age", "f_pos", "f_from", "f_to", "f_foot",
+    "f_eu", "f_israeli", "f_played", "f_without", "f_ssa", "f_ssa_countries",
+)
+
+
+def with_reset(key):
+    left, right = st.sidebar.columns([8, 1])
+    right.button("✕", key="x_" + key, on_click=clear_filters, args=(key,), help="Reset this filter")
+    return left
+
+
+st.sidebar.header("Filter Players")
+st.sidebar.button("Reset all filters", key="x_all", on_click=clear_filters, args=ALL_FILTER_KEYS)
+
+search_name = with_reset("f_name").text_input("Search by name", key="f_name")
+search_club = with_reset("f_club").text_input("Search by club", key="f_club")
 
 ages = df["Age"].dropna()
 age_range = None
 if len(ages) > 0 and ages.min() < ages.max():
     age_min, age_max = int(ages.min()), int(ages.max())
-    age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max))
+    age_range = with_reset("f_age").slider("Age Range", age_min, age_max, (age_min, age_max), key="f_age")
 
-selected_positions = st.sidebar.multiselect(
-    "Position (empty = all)", list(POS_CODES.values())
+selected_positions = with_reset("f_pos").multiselect(
+    "Position (empty = all)", list(POS_CODES.values()), key="f_pos"
 )
 
 value_cap = int(df["Market Value (€)"].max()) if df["Market Value (€)"].notna().any() else 0
-st.sidebar.write("Market value (€)")
-value_from = st.sidebar.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000)
+head, head_x = st.sidebar.columns([8, 1])
+head.write("Market value (€)")
+head_x.button("✕", key="x_value", on_click=clear_filters, args=("f_from", "f_to"), help="Reset this filter")
+value_from = st.sidebar.number_input("From", min_value=0, max_value=value_cap, value=0, step=100000, key="f_from")
 st.sidebar.caption(f"From: {value_from:,}")
-value_to = st.sidebar.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000)
+value_to = st.sidebar.number_input("To", min_value=0, max_value=value_cap, value=value_cap, step=100000, key="f_to")
 st.sidebar.caption(f"To: {value_to:,}")
 
-foot_choice = st.sidebar.radio("Foot", ["All", "R", "L"], horizontal=True)
-eu_choice = st.sidebar.radio("EU passport", ["All", "YES", "NO"], horizontal=True)
-israeli_choice = st.sidebar.radio("Israeli", ["All", "YES", "NO"], horizontal=True)
-played_choice = st.sidebar.radio("Played in Israel", ["All", "YES", "NO"], horizontal=True)
-without_choice = st.sidebar.radio("Without Club", ["All", "YES", "NO"], horizontal=True)
-ssa_choice = st.sidebar.radio("Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True)
-ssa_countries = st.sidebar.multiselect("SSA countries (any of)", list(SSA.keys()))
+foot_choice = with_reset("f_foot").radio("Foot", ["All", "R", "L"], horizontal=True, key="f_foot")
+eu_choice = with_reset("f_eu").radio("EU passport", ["All", "YES", "NO"], horizontal=True, key="f_eu")
+israeli_choice = with_reset("f_israeli").radio("Israeli", ["All", "YES", "NO"], horizontal=True, key="f_israeli")
+played_choice = with_reset("f_played").radio("Played in Israel", ["All", "YES", "NO"], horizontal=True, key="f_played")
+without_choice = with_reset("f_without").radio("Without Club", ["All", "YES", "NO"], horizontal=True, key="f_without")
+ssa_choice = with_reset("f_ssa").radio("Sub-Saharan Africa", ["All", "YES", "NO"], horizontal=True, key="f_ssa")
+ssa_countries = with_reset("f_ssa_countries").multiselect(
+    "SSA countries (any of)", list(SSA.keys()), key="f_ssa_countries"
+)
 st.sidebar.caption(
     "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
     "from club names. SSA is by any citizenship or birth country."
