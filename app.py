@@ -316,7 +316,7 @@ births = df["Birth Country"].fillna("").astype(str).str.strip().str.lower().toli
 df["Nationalities"] = [", ".join(n) for n in nats]
 df["EU"] = ["YES" if any(x in EU for x in l) or b in EU else "NO" for l, b in zip(lower, births)]
 df["Israeli"] = ["YES" if "israel" in l or b == "israel" else "NO" for l, b in zip(lower, births)]
-df["SSA"] = [
+df["African"] = [
     ", ".join(sorted({SSA_LOOKUP[x] for x in l + [b] if x in SSA_LOOKUP}))
     for l, b in zip(lower, births)
 ]
@@ -539,11 +539,11 @@ if played_choice != "All":
 if without_choice != "All":
     mask &= df["Without Club"] == without_choice
 if ssa_choice == "YES":
-    mask &= df["SSA"] != ""
+    mask &= df["African"] != ""
 elif ssa_choice == "NO":
-    mask &= df["SSA"] == ""
+    mask &= df["African"] == ""
 if ssa_countries:
-    mask &= df["SSA"].apply(lambda s: any(c in s.split(", ") for c in ssa_countries))
+    mask &= df["African"].apply(lambda s: any(c in s.split(", ") for c in ssa_countries))
 
 df = df[mask]
 
@@ -554,7 +554,7 @@ st.write(f"Showing **{len(df)}** players:")
 
 SHOW = [
     "Name", "Transfermarkt", "Age", "Position", "Foot", "Club", "Source",
-    "Nationalities", "EU", "Israeli", "Played in Israel", "SSA",
+    "Nationalities", "EU", "Israeli", "Played in Israel", "African",
     "Market Value (€)", "Season Minutes", "Season Goals", "Season Assists",
     "Contract Expires", "Agent",
     "Scraped", "Latest Transfer Date",
