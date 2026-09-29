@@ -57,14 +57,31 @@ with st.sidebar.expander("Data source"):
     transfers_url = st.text_input("Transfers file URL", value=BASE + "transfers.csv.gz")
 
 
-def download_csv(url):
+def download_csv(url, usecols=None):
     res = requests.get(url, headers=HEADERS, timeout=60)
     if res.status_code != 200:
         raise RuntimeError(f"Server returned status {res.status_code}")
     content = res.content
     compression = "gzip" if content[:2] == b"\x1f\x8b" else None
-    return pd.read_csv(io.BytesIO(content), compression=compression), res.headers
+    return pd.read_csv(io.BytesIO(content), compression=compression, usecols=usecols), res.headers
 
+
+@st.cache_data(ttl=604800, show_spinner="Loading season stats...")
+def load_season_stats():
+    df, _ = download_csv(
+        BASE + "appearances.csv.gz",
+        usecols=["player_id", "date", "goals", "assists", "minutes_played"],
+    )
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df[(df["date"] >= "2025-07-01") & (df["date"] <= "2026-06-30")]
+    stats = df.groupby("player_id", as_index=False).agg(
+        **{
+            "Season Minutes": ("minutes_played", "sum"),
+            "Season Goals": ("goals", "sum"),
+            "Season Assists": ("assists", "sum"),
+        }
+    )
+    return stats
 
 
 
