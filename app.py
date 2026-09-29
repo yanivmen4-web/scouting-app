@@ -148,7 +148,6 @@ def load_apify_players(token):
     if res.status_code != 200:
         raise RuntimeError(f"Runs list failed: {res.status_code} {res.text[:200]}")
     runs = res.json()["data"]["items"]
-    st.write("DEBUG runs:", len(runs), [(r.get("id"), r.get("status"), r.get("startedAt")) for r in runs[:5]])
     rows = []
     seen = set()
     for run in runs:
@@ -158,7 +157,6 @@ def load_apify_players(token):
             headers=auth,
             timeout=120,
         )
-        if run in runs[:3]: st.write("DEBUG dataset:", run["id"], got.status_code, got.text[:300])
         if got.status_code != 200:
             continue
         data = got.json()
