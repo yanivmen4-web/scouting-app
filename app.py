@@ -251,7 +251,14 @@ try:
     df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
 except Exception as e:
     st.warning(f"Could not load transfers file: {e}")
-
+try:
+    with st.spinner("Loading season stats..."):
+        result = load_season_stats()
+    stats = result[0] if isinstance(result, tuple) else result
+    stats["player_id"] = stats["player_id"].astype("Int64")
+    df = df.merge(stats, on="player_id", how="left")
+except Exception as e:
+    st.warning(f"Could not load season stats: {e}")
 try:
     apify_token = st.secrets["APIFY_TOKEN"]
 except Exception:
