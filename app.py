@@ -508,7 +508,7 @@ df = df[mask]
 st.write(f"Showing **{len(df)}** players:")
 
 SHOW = [
-    "Name", "Transfermarkt", "Age", "Position", "Foot", "Club", "Source",
+    "Name", "Transfermarkt", "Age", "Height (cm)", "Position", "Foot", "Club", "Source",
     "Nationalities", "EU", "Israeli", "Played in Israel", "African",
     "Market Value (€)", "Season Minutes", "Season Goals", "Season Assists",
     "Contract Expires", "Agent",
