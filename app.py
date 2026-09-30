@@ -526,6 +526,7 @@ SHOW = [
 display_df = df[[c for c in SHOW if c in df.columns]]
 
 column_config = {
+    "Latest Transfer Date": st.column_config.DateColumn("Latest Transfer Date", format="YYYY-MM-DD"),
     "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
     "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
     "Season Minutes": st.column_config.NumberColumn("Minutes 25/26 (incl. national team)", format="localized"),
