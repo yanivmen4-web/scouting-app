@@ -479,6 +479,7 @@ st.sidebar.caption(
 )
 
 mask = pd.Series(True, index=df.index)
+mask &= ~df["Club Name"].astype(str).str.contains("retired|career break", case=False, na=False)
 if search_name:
     mask &= df["Name"].astype(str).str.contains(search_name, case=False, na=False, regex=False)
 if search_club:
