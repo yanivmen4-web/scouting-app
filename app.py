@@ -402,11 +402,16 @@ age_range = None
 if len(ages) > 0 and ages.min() < ages.max():
     age_min, age_max = int(ages.min()), int(ages.max())
     filter_header("Age Range", "f_age")
-    age_range = st.sidebar.slider(
-        "Age Range", age_min, age_max, (age_min, age_max),
-        key=wkey("f_age"), label_visibility="collapsed",
+    age_cols = st.sidebar.columns(2)
+    age_from = age_cols[0].number_input(
+        "Min age", min_value=age_min, max_value=age_max, value=age_min,
+        step=1, key=wkey("f_age") + "_min",
     )
-
+    age_to = age_cols[1].number_input(
+        "Max age", min_value=age_min, max_value=age_max, value=age_max,
+        step=1, key=wkey("f_age") + "_max",
+    )
+    age_range = (min(age_from, age_to), max(age_from, age_to))
 filter_header("Position (empty = all)", "f_pos")
 selected_positions = st.sidebar.multiselect(
     "Position (empty = all)", list(POS_CODES.values()),
