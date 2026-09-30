@@ -36,6 +36,7 @@ COLUMNS = {
     "market_value_in_eur": "Market Value (€)",
     "contract_expiration_date": "Contract Expires",
     "agent_name": "Agent", "foot": "Foot",
+    "height_in_cm": "Height (cm)",
 }
 
 POS_CODES = {
