@@ -453,6 +453,11 @@ played_choice = st.sidebar.radio(
     "Played in Israel", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_played"), label_visibility="collapsed",
 )
+filter_header("In Israel Now", "f_inisrael")
+inisrael_choice = st.sidebar.radio(
+    "In Israel Now", ["All", "YES", "NO"], horizontal=True,
+    key=wkey("f_inisrael"), label_visibility="collapsed",
+)
 filter_header("Without Club", "f_without")
 without_choice = st.sidebar.radio(
     "Without Club", ["All", "YES", "NO"], horizontal=True,
