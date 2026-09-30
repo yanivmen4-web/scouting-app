@@ -323,6 +323,7 @@ df["African"] = [
 ]
 played = df["player_id"].isin(set(israel_ids)) | df["Club Name"].astype(str).str.contains(ISRAEL_CLUBS)
 df["Played in Israel"] = played.map({True: "YES", False: "NO"})
+df["In Israel Now"] = df["Club Name"].astype(str).str.contains(ISRAEL_CLUBS).map({True: "YES", False: "NO"})
 df["Without Club"] = (df["Club Name"].isna() | df["Club Name"].astype(str).str.contains("without club", case=False, na=False)).map({True: "YES", False: "NO"})
 df["Source"] = df["Live"].map({True: "Live (Apify)", False: "Open data"})
 df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
