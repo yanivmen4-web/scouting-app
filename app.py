@@ -247,7 +247,10 @@ try:
     with st.spinner("Loading transfers file..."):
         latest, israel_ids = load_transfer_info(transfers_url)
     df = df.merge(latest, on="player_id", how="left")
-    has_latest = df["Latest Club"].notna()
+    contract_col = next((c for c in df.columns if "contract" in c.lower()), None)
+    under_contract = (pd.to_datetime(df[contract_col], errors="coerce") > pd.Timestamp.today()) if contract_col else False
+    free_transfer = df["Latest Club"].astype(str).str.strip().str.lower().eq("without club")
+    has_latest = df["Latest Club"].notna() & ~(free_transfer & under_contract & df["Club"].notna())
     df["Club Name"] = df["Latest Club"].where(has_latest, df["Club"])
     df["Club ID"] = df["Latest Club ID"].where(has_latest, df["Club ID"])
 except Exception as e:
