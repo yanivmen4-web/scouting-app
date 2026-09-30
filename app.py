@@ -175,6 +175,8 @@ def load_apify_players(token):
             headers=auth,
             timeout=120,
         )
+        if got.status_code == 402:
+            raise RuntimeError("Apify data is locked (402): the monthly limit was exceeded. It resets on the 20th of the month.")
         if got.status_code != 200:
             continue
         data = got.json()
