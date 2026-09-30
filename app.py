@@ -654,7 +654,7 @@ def run_debug_competition_test():
         ("Costa Rica", "Primera Division", "https://www.transfermarkt.com/primera-division-clausura/startseite/wettbewerb/CRPD"),
     ]
 
-    if st.button("Test all target leagues (debug)"):
+    if False and st.button("Test all target leagues (debug)"):
         results = []
         club_ids_by_league = {}
         progress = st.progress(0)
