@@ -86,7 +86,7 @@ def load_season_stats():
 
 
 
- SSA = {
+SSA = {
     "Angola": [], "Benin": [], "Botswana": [], "Burkina Faso": [], "Burundi": [],
     "Cameroon": [], "Cape Verde": ["cabo verde"], "Central African Republic": [],
     "Chad": [], "Comoros": [], "Congo": ["republic of the congo"],
