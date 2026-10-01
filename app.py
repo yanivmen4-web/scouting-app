@@ -378,7 +378,7 @@ def bump(*names):
 
 
 ALL_FILTERS = (
-    "f_name", "f_club", "f_age", "f_pos", "f_value", "f_foot",
+    "f_name", "f_club", "f_age", "f_height", "f_pos", "f_value", "f_foot",
     "f_eu", "f_israeli", "f_played", "f_inisrael", "f_without", "f_ssa", "f_ssa_countries",
 )
 
@@ -530,6 +530,9 @@ elif ssa_choice == "NO":
     mask &= df["African"] == ""
 if ssa_countries:
     mask &= df["African"].apply(lambda s: any(c in s.split(", ") for c in ssa_countries))
+if height_range:
+    h_vals = pd.to_numeric(df["Height"], errors="coerce")
+    mask &= h_vals.between(height_range[0], height_range[1])
 
 df = df[mask]
 
