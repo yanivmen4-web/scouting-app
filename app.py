@@ -86,7 +86,7 @@ def load_season_stats():
 
 
 
- = {
+ SSA = {
     "Angola": [], "Benin": [], "Botswana": [], "Burkina Faso": [], "Burundi": [],
     "Cameroon": [], "Cape Verde": ["cabo verde"], "Central African Republic": [],
     "Chad": [], "Comoros": [], "Congo": ["republic of the congo"],
@@ -94,7 +94,7 @@ def load_season_stats():
     "Cote d'Ivoire": ["ivory coast", "c\u00f4te d'ivoire"], "Djibouti": [],
     "Equatorial Guinea": [], "Eritrea": [], "Eswatini": ["swaziland"], "Ethiopia": [],
     "Gabon": [], "Gambia": ["the gambia"], "Ghana": [], "Guinea": [],
-    "Guinea-Biu": [], "Kenya": [], "Lesotho": [], "Liberia": [], "Madagascar": [],
+    "Guinea-Biussau": [], "Kenya": [], "Lesotho": [], "Liberia": [], "Madagascar": [],
     "Malawi": [], "Mali": [], "Mauritania": [], "Mauritius": [], "Mozambique": [],
     "Namibia": [], "Niger": [], "Nigeria": [], "Rwanda": [], "Sao Tome and Principe": [],
     "Senegal": [], "Seychelles": [], "Sierra Leone": [], "Somalia": [],
