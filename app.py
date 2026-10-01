@@ -86,7 +86,7 @@ def load_season_stats():
 
 
 
-SSA = {
+ = {
     "Angola": [], "Benin": [], "Botswana": [], "Burkina Faso": [], "Burundi": [],
     "Cameroon": [], "Cape Verde": ["cabo verde"], "Central African Republic": [],
     "Chad": [], "Comoros": [], "Congo": ["republic of the congo"],
@@ -94,7 +94,7 @@ SSA = {
     "Cote d'Ivoire": ["ivory coast", "c\u00f4te d'ivoire"], "Djibouti": [],
     "Equatorial Guinea": [], "Eritrea": [], "Eswatini": ["swaziland"], "Ethiopia": [],
     "Gabon": [], "Gambia": ["the gambia"], "Ghana": [], "Guinea": [],
-    "Guinea-Bissau": [], "Kenya": [], "Lesotho": [], "Liberia": [], "Madagascar": [],
+    "Guinea-Biu": [], "Kenya": [], "Lesotho": [], "Liberia": [], "Madagascar": [],
     "Malawi": [], "Mali": [], "Mauritania": [], "Mauritius": [], "Mozambique": [],
     "Namibia": [], "Niger": [], "Nigeria": [], "Rwanda": [], "Sao Tome and Principe": [],
     "Senegal": [], "Seychelles": [], "Sierra Leone": [], "Somalia": [],
@@ -419,6 +419,23 @@ if len(ages) > 0 and ages.min() < ages.max():
         step=1, key=wkey("f_age") + "_max",
     )
     age_range = (min(age_from, age_to), max(age_from, age_to))
+heights = pd.to_numeric(df["Height"], errors="coerce")
+heights = heights[heights > 0].dropna()
+height_range = None
+if len(heights) > 0 and heights.min() < heights.max():
+    h_min, h_max = int(heights.min()), int(heights.max())
+    filter_header("Height (cm)", "f_height")
+    h_cols = st.sidebar.columns(2)
+    h_from = h_cols[0].number_input(
+        "Min height", min_value=h_min, max_value=h_max, value=h_min,
+        step=1, key=wkey("f_height") + "_min",
+    )
+    h_to = h_cols[1].number_input(
+        "Max height", min_value=h_min, max_value=h_max, value=h_max,
+        step=1, key=wkey("f_height") + "_max",
+    )
+    if h_from != h_min or h_to != h_max:
+        height_range = (min(h_from, h_to), max(h_from, h_to))
 filter_header("Position (empty = all)", "f_pos")
 selected_positions = st.sidebar.multiselect(
     "Position (empty = all)", list(POS_CODES.values()),
