@@ -73,7 +73,9 @@ def load_season_stats():
         BASE + "appearances.csv.gz",
         usecols=["player_id", "date", "goals", "assists", "minutes_played"],
     )
-    st.caption(f"Latest appearance in data: {df['date'].max()}")
+    df["date"] = pd.to_datetime(
+        df["date"].astype(str), errors="coerce", utc=True
+    ).dt.tz_localize(None)
 
     today = pd.Timestamp.today()
     start_year = today.year if today.month >= 7 else today.year - 1
@@ -96,7 +98,6 @@ def load_season_stats():
     prev = _sum_stats(df[df["date"] < cur_start], "Previous")
     stats = prev.merge(cur, on="player_id", how="outer").fillna(0)
     return stats
-
 
 
 SSA = {
