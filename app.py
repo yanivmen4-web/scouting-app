@@ -76,6 +76,7 @@ def load_season_stats():
     df["date"] = pd.to_datetime(
         df["date"].astype(str), errors="coerce", utc=True
     ).dt.tz_localize(None)
+    st.caption(f"Latest appearance in data: {df['date'].max()}")
 
     today = pd.Timestamp.today()
     start_year = today.year if today.month >= 7 else today.year - 1
