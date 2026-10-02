@@ -74,14 +74,27 @@ def load_season_stats():
         usecols=["player_id", "date", "goals", "assists", "minutes_played"],
     )
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df = df[(df["date"] >= "2025-07-01") & (df["date"] <= "2026-06-30")]
-    stats = df.groupby("player_id", as_index=False).agg(
-        **{
-            "Season Minutes": ("minutes_played", "sum"),
-            "Season Goals": ("goals", "sum"),
-            "Season Assists": ("assists", "sum"),
-        }
-    )
+
+    today = pd.Timestamp.today()
+    start_year = today.year if today.month >= 7 else today.year - 1
+    cur_start = pd.Timestamp(start_year, 7, 1)
+    cur_end = pd.Timestamp(start_year + 1, 6, 30)
+    prev_start = pd.Timestamp(start_year - 1, 7, 1)
+
+    df = df[(df["date"] >= prev_start) & (df["date"] <= cur_end)]
+
+    def _sum_stats(d, label):
+        return d.groupby("player_id", as_index=False).agg(
+            **{
+                f"Minutes {label}": ("minutes_played", "sum"),
+                f"Goals {label}": ("goals", "sum"),
+                f"Assists {label}": ("assists", "sum"),
+            }
+        )
+
+    cur = _sum_stats(df[df["date"] >= cur_start], "Current")
+    prev = _sum_stats(df[df["date"] < cur_start], "Previous")
+    stats = prev.merge(cur, on="player_id", how="outer").fillna(0)
     return stats
 
 
@@ -542,11 +555,13 @@ df = df[mask]
 st.write(f"Showing **{len(df)}** players:")
 
 SHOW = [
-    "Name", "Transfermarkt", "Age", "Height (cm)", "Position", "Foot", "Club", "Source",
-    "Nationalities", "EU", "Israeli", "Played in Israel", "African",
-    "Market Value (€)", "Season Minutes", "Season Goals", "Season Assists",
+    "Name", "Transfermarkt", "Age", "Height (cm)", "Position", "Foot", "Club",
+    "Nationalities", "Market Value (€)",
+    "Minutes Current", "Goals Current", "Assists Current",
+    "Minutes Previous", "Goals Previous", "Assists Previous",
     "Contract Expires", "Agent",
     "Scraped", "Latest Transfer Date",
+    "Source", "EU", "Israeli", "Played in Israel", "African",
 ]
 display_df = df[[c for c in SHOW if c in df.columns]]
 
@@ -554,9 +569,12 @@ column_config = {
     "Latest Transfer Date": st.column_config.DateColumn("Latest Transfer Date", format="YYYY-MM-DD"),
     "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
     "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
-    "Season Minutes": st.column_config.NumberColumn("Minutes 25/26 (incl. national team)", format="localized"),
-    "Season Goals": st.column_config.NumberColumn("Goals 25/26 (incl. national team)"),
-    "Season Assists": st.column_config.NumberColumn("Assists 25/26 (incl. national team)"),
+    "Minutes Current": st.column_config.NumberColumn("Minutes (current season)", format="localized"),
+    "Goals Current": st.column_config.NumberColumn("Goals (current season)"),
+    "Assists Current": st.column_config.NumberColumn("Assists (current season)"),
+    "Minutes Previous": st.column_config.NumberColumn("Minutes (previous season)", format="localized"),
+    "Goals Previous": st.column_config.NumberColumn("Goals (previous season)"),
+    "Assists Previous": st.column_config.NumberColumn("Assists (previous season)"),
 }
 try:
     money_config = dict(column_config)
