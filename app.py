@@ -432,7 +432,7 @@ if len(ages) > 0 and ages.min() < ages.max():
         step=1, key=wkey("f_age") + "_max",
     )
 age_range = (min(age_from, age_to), max(age_from, age_to))
-heights = pd.to_numeric(df["Height (cm)"], errors="coerce")
+heights = pd.to_numeric(df["Height (cm)"], errors="coerce") if "Height (cm)" in df.columns else pd.Series(dtype=float)
 heights = heights[(heights >= 150) & (heights <= 220)].dropna()
 height_range = None
 if len(heights) > 0 and heights.min() < heights.max():
