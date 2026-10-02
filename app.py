@@ -73,7 +73,7 @@ def load_season_stats():
         BASE + "appearances.csv.gz",
         usecols=["player_id", "date", "goals", "assists", "minutes_played"],
     )
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    st.caption(f"Latest appearance in data: {df['date'].max()}")
 
     today = pd.Timestamp.today()
     start_year = today.year if today.month >= 7 else today.year - 1
