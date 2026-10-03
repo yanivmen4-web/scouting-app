@@ -392,8 +392,8 @@ def bump(*names):
 
 
 ALL_FILTERS = (
-    "f_name", "f_club", "f_age", "f_", "f_pos", "f_value", "f_foot",
-    "f_eu", "f_", "f_played", "f_inisrael", "f_without", "f_ssa", "f_ssa_countries",
+    "f_name", "f_club", "f_age", "f_height", "f_pos", "f_value", "f_foot",
+    "f_eu", "f_israeli", "f_played", "f_inisrael", "f_without", "f_ssa", "f_ssa_countries",
 )
 
 
