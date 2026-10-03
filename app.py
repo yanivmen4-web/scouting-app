@@ -463,11 +463,12 @@ value_from = st.sidebar.number_input(
     key=wkey("f_value") + "_from",
 )
 st.sidebar.caption(f"From: {value_from:,}")
-value_to = st.sidebar.number_input(
-    "To", min_value=0, max_value=value_cap, value=value_cap, step=100000,
+value_to_text = st.sidebar.text_input(
+    "To", value="", placeholder="No limit",
     key=wkey("f_value") + "_to",
 )
-st.sidebar.caption(f"To: {value_to:,}")
+_digits = value_to_text.replace(",", "").strip()
+value_to = int(_digits) if _digits.isdigit() else value_cap
 
 filter_header("Foot", "f_foot")
 foot_choice = st.sidebar.radio(
