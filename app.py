@@ -393,7 +393,7 @@ def bump(*names):
 
 ALL_FILTERS = (
     "f_name", "f_club", "f_age", "f_", "f_pos", "f_value", "f_foot",
-    "f_eu", "f_israeli", "f_played", "f_inisrael", "f_without", "f_ssa", "f_ssa_countries",
+    "f_eu", "f_", "f_played", "f_inisrael", "f_without", "f_ssa", "f_ssa_countries",
 )
 
 
@@ -479,7 +479,7 @@ eu_choice = st.sidebar.radio(
     "EU passport", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_eu"), label_visibility="collapsed",
 )
-filter_header("Israeli", "f_israeli")
+filter_header("", "f_israeli")
 israeli_choice = st.sidebar.radio(
     "Israeli", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_israeli"), label_visibility="collapsed",
