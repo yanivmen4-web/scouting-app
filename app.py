@@ -479,7 +479,7 @@ eu_choice = st.sidebar.radio(
     "EU passport", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_eu"), label_visibility="collapsed",
 )
-filter_header("", "f_israeli")
+filter_header("Israeli", "f_israeli")
 israeli_choice = st.sidebar.radio(
     "Israeli", ["All", "YES", "NO"], horizontal=True,
     key=wkey("f_israeli"), label_visibility="collapsed",
