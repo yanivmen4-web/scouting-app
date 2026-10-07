@@ -769,6 +769,7 @@ with st.expander("Refresh and manual runs"):
             resp = requests.post(
                 f"{API}/acts/{ACTOR}/runs",
                 json={"scrapeType": "clubs", "items": items},
+                params={"maxTotalChargeUsd": 1},
                 headers=AUTH,
                 timeout=60,
             )
