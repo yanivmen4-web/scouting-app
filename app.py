@@ -755,7 +755,7 @@ with st.expander("Refresh and manual runs"):
             st.rerun()
         st.caption("Reloads the newest Apify results into the table (also happens automatically every 6 hours).")
         run_debug_competition_test()
-                batch_choice = st.selectbox(
+        batch_choice = st.selectbox(
             "Load a club batch",
             ["Israel leagues (default)"] + [f"Batch {n + 1} ({len(b)} clubs)" for n, b in enumerate(club_batches)],
         )
