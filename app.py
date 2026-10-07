@@ -755,7 +755,15 @@ with st.expander("Refresh and manual runs"):
             st.rerun()
         st.caption("Reloads the newest Apify results into the table (also happens automatically every 6 hours).")
         run_debug_competition_test()
-        club_text = st.text_area("Clubs to scrape now (one per line)", value="\n".join(ISRAEL_LEAGUES), height=200)
+                batch_choice = st.selectbox(
+            "Load a club batch",
+            ["Israel leagues (default)"] + [f"Batch {n + 1} ({len(b)} clubs)" for n, b in enumerate(club_batches)],
+        )
+        if batch_choice.startswith("Batch"):
+            default_text = "\n".join(club_batches[int(batch_choice.split()[1]) - 1])
+        else:
+            default_text = "\n".join(ISRAEL_LEAGUES)
+        club_text = st.text_area("Clubs to scrape now (one per line)", value=default_text, height=200)
         if st.button("Scrape these clubs now"):
             items = [line.strip() for line in club_text.splitlines() if line.strip()]
             resp = requests.post(
