@@ -589,6 +589,7 @@ display_df = df[[c for c in SHOW if c in df.columns]]
 
 column_config = {
     "Latest Transfer Date": st.column_config.DateColumn("Latest Transfer Date", format="YYYY-MM-DD"),
+    "Contract Expires": st.column_config.DateColumn("Contract Expires", format="DD-MM-YYYY"),
     "Transfermarkt": st.column_config.LinkColumn("Transfermarkt", display_text="Open"),
     "Club": st.column_config.LinkColumn("Club", display_text=r"#(.*)$"),
     "Minutes Current": st.column_config.NumberColumn("Minutes (current season)", format="localized"),
