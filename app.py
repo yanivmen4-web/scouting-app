@@ -450,6 +450,20 @@ if len(heights) > 0 and heights.min() < heights.max():
     )
     if h_from != h_min or h_to != h_max:
         height_range = (min(h_from, h_to), max(h_from, h_to))
+contract_range = Nonecontract_range = None
+contract_range = None
+filter_header("Contract Expires (from - to)", "f_contract")
+c_cols = st.sidebar.columns(2)
+c_from = c_cols[0].date_input(
+    "From", value=None, format="DD-MM-YYYY",
+    key=wkey("f_contract") + "_from",
+)
+c_to = c_cols[1].date_input(
+    "To", value=None, format="DD-MM-YYYY",
+    key=wkey("f_contract") + "_to",
+)
+if c_from or c_to:
+    contract_range = (c_from, c_to)
 filter_header("Position (empty = all)", "f_pos")
 selected_positions = st.sidebar.multiselect(
     "Position (empty = all)", list(POS_CODES.values()),
