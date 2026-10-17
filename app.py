@@ -453,13 +453,12 @@ if len(heights) > 0 and heights.min() < heights.max():
 contract_range = Nonecontract_range = None
 contract_range = None
 filter_header("Contract Expires (from - to)", "f_contract")
-c_cols = st.sidebar.columns(2)
-c_from = c_cols[0].date_input(
-    "From", value=None, format="DD-MM-YYYY",
+c_from = st.sidebar.date_input(
+    "Contract expires from", value=None, format="DD-MM-YYYY",
     key=wkey("f_contract") + "_from",
 )
-c_to = c_cols[1].date_input(
-    "To", value=None, format="DD-MM-YYYY",
+c_to = st.sidebar.date_input(
+    "Contract expires to", value=None, format="DD-MM-YYYY",
     key=wkey("f_contract") + "_to",
 )
 if c_from or c_to:
