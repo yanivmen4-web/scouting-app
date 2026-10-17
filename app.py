@@ -561,6 +561,13 @@ if ssa_countries:
 if height_range:
     h_vals = pd.to_numeric(df["Height (cm)"], errors="coerce")
     mask &= h_vals.between(height_range[0], height_range[1])
+if contract_range:
+    c_vals = pd.to_datetime(df["Contract Expires"], errors="coerce")
+    if contract_range[0]:
+        mask &= c_vals >= pd.Timestamp(contract_range[0])
+    if contract_range[1]:
+        mask &= c_vals <= pd.Timestamp(contract_range[1])
+    
 
 df = df[mask]
 
