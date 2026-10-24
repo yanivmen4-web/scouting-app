@@ -582,7 +582,7 @@ _cm = pd.to_numeric(df["Minutes Current"], errors="coerce").fillna(0) > 0
 st.caption(
     f"DEBUG total={len(df)} | live={int(df['Live'].sum())} | "
     f"prev minutes>0: {int(_pm.sum())} | cur minutes>0: {int(_cm.sum())} | "
-    f"live with prev minutes>0: {int((_pm & df['Live']).sum())}"
+    f"live with prev minutes>0: {int((_pm & df['Live']).sum())} | latest app: {df['LatestApp'].max()}"
 )
 st.write(f"Showing **{len(df)}** players:")
 
