@@ -400,7 +400,7 @@ ALL_FILTERS = (
 )
 
 
-def filter_header(label, *names):
+def (label, *names):
     left, right = st.sidebar.columns([6, 1], vertical_alignment="center")
     left.write(label)
     right.button(
@@ -412,11 +412,11 @@ def filter_header(label, *names):
 st.sidebar.header("Filter Players")
 st.sidebar.button("Reset all filters", key="x_all", on_click=bump, args=ALL_FILTERS)
 
-filter_header("Search by name", "f_name")
+("Search by name", "f_name")
 search_name = st.sidebar.text_input(
     "Search by name", key=wkey("f_name"), label_visibility="collapsed"
 )
-filter_header("Search by club", "f_club")
+("Search by club", "f_club")
 search_club = st.sidebar.text_input(
     "Search by club", key=wkey("f_club"), label_visibility="collapsed"
 )
@@ -466,6 +466,10 @@ c_to = st.sidebar.date_input(
 )
 if c_from or c_to:
     contract_range = (c_from, c_to)
+exp_2027 = st.sidebar.checkbox(
+    "Contract expires Jan 2027 or Jun 2027", value=False,
+    key=wkey("f_exp2027"),
+)
 filter_header("Position (empty = all)", "f_pos")
 selected_positions = st.sidebar.multiselect(
     "Position (empty = all)", list(POS_CODES.values()),
