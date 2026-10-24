@@ -574,6 +574,9 @@ if contract_range:
         mask &= c_vals >= pd.Timestamp(contract_range[0])
     if contract_range[1]:
         mask &= c_vals <= pd.Timestamp(contract_range[1])
+    if exp_2027:
+    e_vals = pd.to_datetime(df["Contract Expires"], errors="coerce")
+    mask &= (e_vals.dt.year == 2027) & e_vals.dt.month.isin([1, 6])     
     
 
 df = df[mask]
