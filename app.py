@@ -400,7 +400,7 @@ ALL_FILTERS = (
 )
 
 
-def (label, *names):
+def filter_header(label, *names):
     left, right = st.sidebar.columns([6, 1], vertical_alignment="center")
     left.write(label)
     right.button(
