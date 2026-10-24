@@ -660,7 +660,7 @@ ISRAEL_LEAGUES = [
 
 clubs = base.dropna(subset=["Club ID"]).drop_duplicates("Club ID")
 club_urls = [f"https://www.transfermarkt.com/-/startseite/verein/{int(i)}" for i in clubs["Club ID"]]
-club_batches = [club_urls[i:i + 425] for i in range(0, len(club_urls), 425)]
+club_batches = [club_urls[i:i + 100] for i in range(0, len(club_urls), 100)]
 
 
 def run_options():
