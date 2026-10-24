@@ -99,6 +99,7 @@ def load_season_stats():
     cur = _sum_stats(df[df["date"] >= cur_start], "Current")
     prev = _sum_stats(df[df["date"] < cur_start], "Previous")
     stats = prev.merge(cur, on="player_id", how="outer").fillna(0)
+    stats["LatestApp"] = df["date"].max()
     return stats
 
 
