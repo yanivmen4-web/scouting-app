@@ -76,6 +76,8 @@ def load_season_stats():
     df["date"] = pd.to_datetime(
         df["date"].astype(str), errors="coerce", utc=True
     ).dt.tz_localize(None)
+    st.caption(f"DEBUG appearances: latest date = {df['date'].max()} | rows since 2026-07-01 = {int((df['date'] >= pd.Timestamp(2026, 7, 1)).sum())}")
+    
     
     today = pd.Timestamp.today()
     start_year = today.year if today.month >= 7 else today.year - 1
