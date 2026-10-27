@@ -559,6 +559,11 @@ if inisrael_choice != "All":
     mask &= df["In Israel Now"] == inisrael_choice
 if without_choice != "All":
     mask &= df["Without Club"] == without_choice
+    if without_choice == "YES":
+        MIN_FREE_VALUE = 50000
+        is_open = df["Source"].astype(str).str.contains("open", case=False, na=False)
+        low_value = ~(pd.to_numeric(df["Market Value (€)"], errors="coerce") >= MIN_FREE_VALUE)
+        mask &= ~(is_open & low_value)
 if ssa_choice == "YES":
     mask &= df["African"] != ""
 elif ssa_choice == "NO":
