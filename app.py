@@ -534,7 +534,7 @@ st.sidebar.caption(
     "Israeli = Israeli citizenship or born in Israel. Played in Israel is estimated "
     "from club names. African = a sub-Saharan country by any citizenship or birth country"
 )
-
+st.caption(f"DEBUG duplicates: {df['player_id'].duplicated().sum()}")
 mask = pd.Series(True, index=df.index)
 mask &= ~df["Club Name"].astype(str).str.contains("retired|career break", case=False, na=False)
 if search_name:
