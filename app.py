@@ -350,6 +350,13 @@ df["Played in Israel"] = played.map({True: "YES", False: "NO"})
 df["In Israel Now"] = df["Club Name"].astype(str).str.contains(ISRAEL_CLUBS).map({True: "YES", False: "NO"})
 df["Without Club"] = (df["Club Name"].isna() | df["Club Name"].astype(str).str.contains("without club", case=False, na=False)).map({True: "YES", False: "NO"})
 df["Source"] = df["Live"].map({True: "Live (Apify)", False: "Open data"})
+for col in ("A_League", "A_LeagueCountry"):
+    if col not in df.columns:
+        df[col] = pd.NA
+league_text = df["A_League"].astype("string")
+country_text = df["A_LeagueCountry"].astype("string")
+df["League"] = (league_text + " (" + country_text + ")").where(league_text.notna() & country_text.notna(), league_text)
+df["League"] = df["League"].where(df["Live"], pd.NA)
 df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
 df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 df = df.sort_values("Market Value (€)", ascending=False, na_position="last").reset_index(drop=True)
