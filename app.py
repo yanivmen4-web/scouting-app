@@ -357,6 +357,21 @@ for col in ("A_League", "A_LeagueCountry"):
 league_text = df["A_League"].astype("string")
 country_text = df["A_LeagueCountry"].astype("string")
 df["League"] = (league_text + " (" + country_text + ")").where(league_text.notna() & country_text.notna(), league_text)
+LEAGUE_NAMES = {
+    "A1": "Bundesliga (Austria)", "ARG1": "Liga Profesional (Argentina)", "AUS1": "A-League (Australia)",
+    "BE1": "Jupiler Pro League (Belgium)", "BRA1": "Serie A (Brazil)", "C1": "Super League (Switzerland)",
+    "COL1": "Primera A (Colombia)", "DK1": "Superliga (Denmark)", "ES1": "LaLiga (Spain)",
+    "FR1": "Ligue 1 (France)", "GB1": "Premier League (England)", "GR1": "Super League (Greece)",
+    "IT1": "Serie A (Italy)", "JAP1": "J1 League (Japan)", "KR1": "K League 1 (South Korea)",
+    "L1": "Bundesliga (Germany)", "MEX1": "Liga MX (Mexico)", "MLS1": "MLS (USA)",
+    "NL1": "Eredivisie (Netherlands)", "NO1": "Eliteserien (Norway)", "PL1": "Ekstraklasa (Poland)",
+    "PO1": "Liga Portugal (Portugal)", "RO1": "SuperLiga (Romania)", "RSK1": "Super Liga (Slovakia)",
+    "RU1": "Premier League (Russia)", "SA1": "Saudi Pro League (Saudi Arabia)", "SC1": "Premiership (Scotland)",
+    "SE1": "Allsvenskan (Sweden)", "SER1": "SuperLiga (Serbia)", "TR1": "Super Lig (Turkey)",
+    "TS1": "Czech First League (Czechia)", "UKR1": "Premier League (Ukraine)",
+}
+if "League Code" in df.columns:
+    df["League"] = df["League"].fillna(df["League Code"].map(LEAGUE_NAMES))
 club_league = df.dropna(subset=["League", "Club ID"]).drop_duplicates("Club ID").set_index("Club ID")["League"]
 df["League"] = df["League"].fillna(df["Club ID"].map(club_league))
 df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
