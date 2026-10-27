@@ -614,7 +614,7 @@ SHOW = [
     "Minutes Previous", "Goals Previous", "Assists Previous",
     "Contract Expires", "Agent",
     "Scraped", "Latest Transfer Date",
-    "Source", "EU", "Israeli", "Played in Israel", "African",
+    "Source", "League", "EU", "Israeli", "Played in Israel", "African",
 ]
 display_df = df[[c for c in SHOW if c in df.columns]]
 
