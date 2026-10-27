@@ -188,7 +188,7 @@ def load_apify_players(token):
     for run in runs:
         got = requests.get(
             f"{api}/datasets/{run['defaultDatasetId']}/items",
-            params={"fields": "clubName,clubUrl,clubSquad", "clean": "true"},
+            params={"fields": "clubName,clubUrl,clubSquad,clubLeague", "clean": "true"},
             headers=auth,
             timeout=120,
         )
@@ -217,6 +217,8 @@ def load_apify_players(token):
                     "A_Pos": p.get("specificPosition"),
                     "A_Club": club.get("clubName"),
                     "A_ClubID": club_id,
+                    "A_League": (club.get("clubLeague") or {}).get("name") if isinstance(club.get("clubLeague"), dict) else None,
+                    "A_LeagueCountry": (club.get("clubLeague") or {}).get("country") if isinstance(club.get("clubLeague"), dict) else None,
                     "Scraped": run.get("finishedAt"),
                 })
     return pd.DataFrame(rows), len(runs)
