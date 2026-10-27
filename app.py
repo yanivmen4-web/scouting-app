@@ -36,6 +36,7 @@ COLUMNS = {
     "market_value_in_eur": "Market Value (€)",
     "contract_expiration_date": "Contract Expires",
     "agent_name": "Agent", "foot": "Foot",
+    "current_club_domestic_competition_id": "League Code",
     "_in_cm": " (cm)",
 }
 
