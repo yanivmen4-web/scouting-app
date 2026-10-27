@@ -188,7 +188,7 @@ def load_apify_players(token):
     for run in runs:
         got = requests.get(
             f"{api}/datasets/{run['defaultDatasetId']}/items",
-            params={"fields": "clubName,clubUrl,clubSquad,clubLeague", "clean": "true"},
+            params={"fields": "clubName,clubUrl,clubSquad", "clean": "true"},
             headers=auth,
             timeout=120,
         )
@@ -202,9 +202,6 @@ def load_apify_players(token):
         for club in data:
             club_match = re.search(r"/verein/(\d+)", str(club.get("clubUrl", "")))
             club_id = int(club_match.group(1)) if club_match else None
-            league = club.get("clubLeague") or {}
-            if not isinstance(league, dict):
-                league = {}
             for p in club.get("clubSquad") or []:
                 match = re.search(r"/spieler/(\d+)", str(p.get("playerUrl", "")))
                 if not match or match.group(1) in seen:
@@ -220,12 +217,37 @@ def load_apify_players(token):
                     "A_Pos": p.get("specificPosition"),
                     "A_Club": club.get("clubName"),
                     "A_ClubID": club_id,
-                    "A_League": league.get("name"),
-                    "A_LeagueCountry": league.get("country"),
-                    "A_LeagueDivision": league.get("division"),
                     "Scraped": run.get("finishedAt"),
                 })
     return pd.DataFrame(rows), len(runs)
+
+
+@st.cache_data(ttl=3600)
+def load_players(url):
+    raw, headers = download_csv(url)
+    file_modified = headers.get("Last-Modified", "")
+    if "last_season" in raw.columns:
+        raw = raw[raw["last_season"] == raw["last_season"].max()]
+    keep = [c for c in COLUMNS if c in raw.columns]
+    df = raw[keep].rename(columns=COLUMNS)
+    for col in COLUMNS.values():
+        if col not in df.columns:
+            df[col] = pd.NA
+    df["Club ID"] = pd.to_numeric(df["Club ID"], errors="coerce").astype("Int64")
+    df["Market Value (€)"] = pd.to_numeric(df["Market Value (€)"], errors="coerce")
+    contract = pd.to_datetime(df["Contract Expires"], errors="coerce")
+    df["Contract Expires"] = contract.dt.strftime("%Y-%m-%d")
+    if "date_of_birth" in raw.columns:
+        dob = pd.to_datetime(raw["date_of_birth"], errors="coerce")
+        df["Age"] = ((pd.Timestamp.today() - dob).dt.days // 365.25).astype("Int64")
+    else:
+        df["Age"] = pd.NA
+    df["Position"] = df["Sub Position"].map(POS_CODES)
+    df["Foot"] = df["Foot"].astype(str).str.strip().str.lower().map(FOOT_CODES)
+    df["player_id"] = raw["player_id"].astype("Int64")
+    df = df.sort_values("Market Value (€)", ascending=False, na_position="last")
+    return df.reset_index(drop=True), file_modified
+
 
 
 
