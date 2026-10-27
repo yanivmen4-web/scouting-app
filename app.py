@@ -356,7 +356,8 @@ for col in ("A_League", "A_LeagueCountry"):
 league_text = df["A_League"].astype("string")
 country_text = df["A_LeagueCountry"].astype("string")
 df["League"] = (league_text + " (" + country_text + ")").where(league_text.notna() & country_text.notna(), league_text)
-df["League"] = df["League"].where(df["Live"], pd.NA)
+club_league = df.dropna(subset=["League", "Club ID"]).drop_duplicates("Club ID").set_index("Club ID")["League"]
+df["League"] = df["League"].fillna(df["Club ID"].map(club_league))
 df["Transfermarkt"] = "https://www.transfermarkt.com/-/profil/spieler/" + df["player_id"].astype(str)
 df["Club"] = [club_link(n, c) for n, c in zip(df["Club Name"], df["Club ID"])]
 df = df.sort_values("Market Value (€)", ascending=False, na_position="last").reset_index(drop=True)
