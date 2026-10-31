@@ -37,7 +37,7 @@ COLUMNS = {
     "contract_expiration_date": "Contract Expires",
     "agent_name": "Agent", "foot": "Foot",
     "current_club_domestic_competition_id": "League Code",
-    "_in_cm": " (cm)",
+    "height_in_cm": "Height (cm)",
 }
 
 POS_CODES = {
