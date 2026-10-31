@@ -452,12 +452,11 @@ age_range = None
 if len(ages) > 0 and ages.min() < ages.max():
     age_min, age_max = int(ages.min()), int(ages.max())
     filter_header("Age Range", "f_age")
-    age_cols = st.sidebar.columns(2)
-    age_from = age_cols[0].number_input(
+    age_from = st.sidebar.number_input(
         "Min age", min_value=age_min, max_value=age_max, value=age_min,
         step=1, key=wkey("f_age") + "_min",
     )
-    age_to = age_cols[1].number_input(
+    age_to = st.sidebar.number_input(
         "Max age", min_value=age_min, max_value=age_max, value=age_max,
         step=1, key=wkey("f_age") + "_max",
     )
