@@ -510,9 +510,10 @@ value_from = st.sidebar.number_input(
 )
 st.sidebar.caption(f"From: {value_from:,}")
 value_to_input = st.sidebar.number_input(
-    "To", min_value=0, value=None, step=100000, placeholder="No limit",
+    "To (0 = no limit)", min_value=0, value=0, step=100000,
     key=wkey("f_value") + "_to",
 )
+st.sidebar.caption(f"To: {value_to_input:,}" if value_to_input else "To: No limit")
 value_to = int(value_to_input) if value_to_input else value_cap
 
 filter_header("Foot", "f_foot")
