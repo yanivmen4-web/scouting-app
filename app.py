@@ -468,12 +468,11 @@ height_range = None
 if len(heights) > 0 and heights.min() < heights.max():
     h_min, h_max = int(heights.min()), int(heights.max())
     filter_header("Height (cm)", "f_height")
-    h_cols = st.sidebar.columns(2)
-    h_from = h_cols[0].number_input(
+    h_from = st.sidebar.number_input(
         "Min height", min_value=h_min, max_value=h_max, value=h_min,
         step=1, key=wkey("f_height") + "_min",
     )
-    h_to = h_cols[1].number_input(
+    h_to = st.sidebar.number_input(
         "Max height", min_value=h_min, max_value=h_max, value=h_max,
         step=1, key=wkey("f_height") + "_max",
     )
