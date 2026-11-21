@@ -421,7 +421,7 @@ def bump(*names):
 
 
 ALL_FILTERS = (
-    "f_name", "f_club", "f_age", "f_height", "f_contract", "f_exp2027", "f_pos", "f_value", "f_foot",
+    "f_name", "f_club", "f_league", "f_age", "f_height", "f_contract", "f_exp2027", "f_pos", "f_value", "f_foot",
     "f_eu", "f_israeli", "f_played", "f_inisrael", "f_without", "f_ssa", "f_ssa_countries",
 )
 
@@ -445,6 +445,11 @@ search_name = st.sidebar.text_input(
 filter_header("Search by club", "f_club")
 search_club = st.sidebar.text_input(
     "Search by club", key=wkey("f_club"), label_visibility="collapsed"
+)
+filter_header("League", "f_league")
+league_options = sorted(df["League"].dropna().unique().tolist())
+selected_leagues = st.sidebar.multiselect(
+    "League", league_options, key=wkey("f_league"), label_visibility="collapsed"
 )
 
 ages = df["Age"].dropna()
@@ -565,6 +570,8 @@ if search_name:
     mask &= df["Name"].astype(str).str.contains(search_name, case=False, na=False, regex=False)
 if search_club:
     mask &= df["Club Name"].astype(str).str.contains(search_club, case=False, na=False, regex=False)
+if selected_leagues:
+    mask &= df["League"].isin(selected_leagues)
 if age_range:
     mask &= df["Age"].between(age_range[0], age_range[1]).fillna(False).astype(bool)
 if selected_positions:
